@@ -9,6 +9,7 @@ from playwright.async_api import async_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIX = open(os.path.join(ROOT, "tests", "fixture.jpg"), "rb").read()
+BANNER = open(os.path.join(ROOT, "tests", "banner.jpg"), "rb").read()
 STICKER = os.path.join(ROOT, "tests", "sticker.png")
 CORS = {"access-control-allow-origin": "*"}
 CHROME = os.environ.get("CHROME_PATH")  # optional local Chrome
@@ -66,11 +67,13 @@ class FakeGemini:
         await route.fulfill(status=200, headers=CORS, body=json.dumps({"candidates": [{"content": {"parts": [{"text": json.dumps(out)}]}}]}))
 
 async def imgflip_api(route):
-    memes = [{"id": "999", "name": "Unmapped Test Meme", "url": "https://i.imgflip.com/test999.jpg", "width": 600, "height": 500, "box_count": 2}]
+    memes = [{"id": "999", "name": "Unmapped Test Meme", "url": "https://i.imgflip.com/test999.jpg", "width": 600, "height": 500, "box_count": 2},
+             {"id": "222403160", "name": "Bernie I Am Once Again Asking For Your Support", "url": "https://i.imgflip.com/3oevdk.jpg", "width": 750, "height": 750, "box_count": 2}]
     await route.fulfill(status=200, headers=CORS, body=json.dumps({"success": True, "data": {"memes": memes}}))
 
 async def imgflip_img(route):
-    await route.fulfill(status=200, headers={**CORS, "content-type": "image/jpeg"}, body=FIX)
+    body = BANNER if "2kbn1e" in route.request.url else FIX  # Surprised Pikachu gets a white top banner
+    await route.fulfill(status=200, headers={**CORS, "content-type": "image/jpeg"}, body=body)
 
 async def main():
     httpd = serve()
@@ -90,6 +93,11 @@ async def main():
 
         n = await pg.evaluate("TEMPLATES.length")
         check("templates load (curated + imgflip list)", n >= 76, n)
+        check("baked-text Bernie excluded, blank Bernie present", await pg.evaluate("!tplById('222403160') && !!tplById('224015000')"))
+        trim = await pg.evaluate("""(async () => { const sp = await specFromTemplate(tplById('155067746'), ['did a thing', 'result']);
+            return { top: sp.base.bands.top, h: sp.base.img.height, w: sp.base.img.width, y0: sp.layers[0].y, stroke: sp.layers[0].stroke }; })()""")
+        check("white banner trimmed from template", trim["top"] > .3 and trim["h"] < trim["w"], trim)
+        check("banner caption moved onto picture", abs(trim["y0"] - .1) < .01 and trim["stroke"], trim)
         check("starter memes render", await pg.locator("#results .meme-card").count() == 4)
 
         # Instant mode (no key)

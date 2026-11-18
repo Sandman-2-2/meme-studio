@@ -546,9 +546,9 @@ const CURATED = [
   { id: "102156234", name: "Mocking SpongeBob", url: "https://i.imgflip.com/1otk96.jpg", themes: ["The Simpsons & Cartoons", "Politics & Debates", "School & Classroom"],
     vibe: "Mocking a ridiculous rule, excuse, or statement in alternating caps",
     zones: zs([["Top setup", .5, .12, .9, 34, "lightLower"], ["Bottom mocking reply", .5, .88, .9, 34, "lightLower"]]) },
-  { id: "222403160", name: "Bernie I Am Once Again Asking", url: "https://i.imgflip.com/3oevdk.jpg", themes: ["Politics & Debates", "School & Classroom", "Gaming & Tech"],
+  { id: "224015000", name: "Bernie I Am Once Again Asking", url: "https://i.imgflip.com/3pdf2w.jpg", themes: ["Politics & Debates", "School & Classroom", "Gaming & Tech"],
     vibe: "Politely begging for something you have already asked for way too many times",
-    zones: zs([["Bottom caption", .5, .88, .9, 32]]) },
+    zones: zs([["I am once again asking… (bottom)", .5, .86, .92, 34]]) },
   { id: "129242436", name: "Change My Mind", url: "https://i.imgflip.com/24y43o.jpg", themes: ["Politics & Debates", "Movies & TV", "Gaming & Tech", "School & Classroom"],
     vibe: "Stating a bold, controversial, or hilariously true opinion confidently at a debate table",
     zones: zs([["Sign text", .58, .72, .46, 26, "dark"]]) },
@@ -772,7 +772,7 @@ const EXAMPLES = {
   "196652226": ["When the potluck sign-up sheet comes around", "Ight, imma head out"],
   "178591752": ["Taking a nap", "Engaging in a brief horizontal productivity pause"],
   "102156234": ["Just read the directions", "jUsT rEaD tHe DiReCtIoNs"],
-  "222403160": ["I am once again asking you to push in your chairs"],
+  "224015000": ["I am once again asking you to push in your chairs"],
   "129242436": ["Cereal is a soup"],
   "1035805": ["How do we save time?", "Longer meetings", "More forms", "Fewer meetings"],
   "87743020": ["Go to bed", "One more episode", "Me at 11:58 PM"],
@@ -847,9 +847,72 @@ let TEMPLATES = [...CURATED.map(t => ({ ...t, curated: true, verified: true })),
 const tplById = id => TEMPLATES.find(t => t.id === String(id));
 
 function layersFromTemplate(t, captions = []) { return t.zones.map((z, i) => ({ ...z, text: captions[i] != null ? String(captions[i]) : "" })); }
-async function specFromTemplate(t, captions) {
-  return { title: t.name, tid: t.id, base: { kind: "image", src: t.url, img: await loadImg(t.url, t.name) }, layers: layersFromTemplate(t, captions), topBar: false };
+
+/* Trim blank white banners from the top/bottom of templates so captions sit on the picture. */
+const BAND_CACHE = new Map(), CROP_CACHE = new Map();
+function detectBands(img) {
+  try {
+    const w = 96, h = Math.max(24, Math.round(w * ih(img) / iw(img)));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data;
+    const blankRow = y => {
+      let ok = 0;
+      for (let i = 0; i < w; i++) {
+        const o = (y * w + i) * 4, r = d[o], g = d[o + 1], b = d[o + 2];
+        if (Math.min(r, g, b) > 232 && Math.max(r, g, b) - Math.min(r, g, b) < 20) ok++;
+      }
+      return ok / w > .97;
+    };
+    let top = 0, bot = 0;
+    while (top < h && blankRow(top)) top++;
+    while (bot < h - top && blankRow(h - 1 - bot)) bot++;
+    let t = top / h, b = bot / h;
+    if (t < .06) t = 0; if (b < .06) b = 0;
+    if (1 - t - b < .4) return { top: 0, bottom: 0 };
+    return { top: t, bottom: b };
+  } catch (e) { return { top: 0, bottom: 0 }; }
 }
+function bandsFor(url, img) {
+  if (!BAND_CACHE.has(url)) BAND_CACHE.set(url, img.isFallback ? { top: 0, bottom: 0 } : detectBands(img));
+  return BAND_CACHE.get(url);
+}
+function cropBands(img, bands) {
+  if (!bands || (!bands.top && !bands.bottom)) return img;
+  const W = iw(img), H = ih(img), y0 = Math.round(H * bands.top), h = Math.round(H * (1 - bands.top - bands.bottom));
+  const c = document.createElement("canvas"); c.width = W; c.height = h;
+  c.getContext("2d").drawImage(img, 0, y0, W, h, 0, 0, W, h);
+  return c;
+}
+async function templateImage(url, label) {
+  const img = await loadImg(url, label);
+  if (img.isFallback || !/i\.imgflip\.com/.test(url)) return { img, bands: { top: 0, bottom: 0 } };
+  const bands = bandsFor(url, img);
+  if (!bands.top && !bands.bottom) return { img, bands };
+  if (!CROP_CACHE.has(url)) CROP_CACHE.set(url, cropBands(img, bands));
+  return { img: CROP_CACHE.get(url), bands };
+}
+// Move zones from full-image coordinates into the trimmed image; captions that lived in a banner move onto the picture.
+function remapToBands(layers, bands) {
+  if (!bands || (!bands.top && !bands.bottom)) return layers;
+  const span = 1 - bands.top - bands.bottom;
+  return layers.map(l => {
+    if (l.type === "image" || l.type === "emoji") return l;
+    let y = (l.y - bands.top) / span, moved = false;
+    if (y < .06) { y = .1; moved = true; } else if (y > .94) { y = .9; moved = true; }
+    const out = { ...l, y };
+    if (moved && !l.stroke) Object.assign(out, CLASSIC, { size: Math.max(l.size || 30, 34) });
+    return out;
+  });
+}
+
+async function specFromTemplate(t, captions) {
+  const { img, bands } = await templateImage(t.url, t.name);
+  const layers = layersFromTemplate(t, captions);
+  return { title: t.name, tid: t.id, base: { kind: "image", src: t.url, img, bands }, layers: t.zonesCropped ? layers : remapToBands(layers, bands), topBar: false };
+}
+// imgflip templates whose image already has words baked in (replaced by blank versions above)
+const BAKED_TEXT = new Set(["222403160"]);
 const normName = n => String(n || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 async function loadMoreTemplates() {
   try {
@@ -863,7 +926,7 @@ async function loadMoreTemplates() {
       if (m) { t.id = String(m.id); t.url = m.url; t.verified = true; }
     });
     const have = new Set(TEMPLATES.map(t => t.id));
-    const extra = api.filter(m => !have.has(String(m.id))).map(m => {
+    const extra = api.filter(m => !have.has(String(m.id)) && !BAKED_TEXT.has(String(m.id))).map(m => {
       const n = m.name.toLowerCase(), th = [];
       if (/alien|ufo|space|star|trek|yoda|future|astronaut/.test(n)) th.push("Aliens & Sci-Fi");
       if (/simpson|homer|bart|lisa|marge|skinner|ralph|milhouse|flanders|krusty|mr burns|moe/.test(n)) th.push("The Simpsons");
@@ -897,7 +960,7 @@ const mapsGet = () => { try { return JSON.parse(localStorage.getItem(MAP_KEY) ||
 const inflightMaps = new Map();
 function applyMap(t, m) {
   if (!m || !Array.isArray(m.zones) || !m.zones.length) return false;
-  t.zones = m.zones; if (m.vibe) t.vibe = m.vibe; t.autoMapped = true; return true;
+  t.zones = m.zones; if (m.vibe) t.vibe = m.vibe; t.autoMapped = true; t.zonesCropped = !!m.cropped; return true;
 }
 function applyCachedMaps() { const all = mapsGet(); TEMPLATES.forEach(t => { if (!t.curated && all[t.id]) applyMap(t, all[t.id]); }); }
 const needsMap = t => t && !t.curated && !t.autoMapped && !t.broken;
@@ -905,7 +968,7 @@ function mapTemplate(t) {
   if (!needsMap(t) || !hasAI()) return Promise.resolve(false);
   if (inflightMaps.has(t.id)) return inflightMaps.get(t.id);
   const p = (async () => {
-    const img = await loadImg(t.url, t.name);
+    const { img } = await templateImage(t.url, t.name);
     if (img.isFallback) return false;
     const cv = scaledCanvas(img, 640);
     if (!taintCheck(cv)) return false;
@@ -920,7 +983,7 @@ Reply with ONLY JSON: {"vibe":"...","boxes":[{"label":"...","x":0.5,"y":0.1,"w":
     if (!boxes.length) return false;
     const zones = zs(boxes.map(b => [String(b.label || "Text").slice(0, 40), clamp(b.x, .05, .95), clamp(b.y, .04, .96), clamp(b.w || .8, .15, .95),
       { s: 24, m: 30, l: 38 }[b.size] || 30, b.style === "dark" ? "dark" : "light"]));
-    const m = { zones, vibe: out.vibe ? String(out.vibe).slice(0, 200) : "" };
+    const m = { zones, vibe: out.vibe ? String(out.vibe).slice(0, 200) : "", cropped: true };
     const all = mapsGet(); all[t.id] = m; try { localStorage.setItem(MAP_KEY, JSON.stringify(all)); } catch (e) {}
     return applyMap(t, m);
   })().catch(() => false).finally(() => inflightMaps.delete(t.id));
@@ -1328,7 +1391,7 @@ async function migrateVault() {
 /* ================= Vault ================= */
 const VAULT_CAP = 300;
 async function updateVaultCount() { $("#vaultCount").textContent = (await storeAll("vault")).length; }
-const specToStored = spec => ({ title: spec.title, tid: spec.tid || null, src: spec.base.src, layers: spec.layers.map(l => ({ ...l })), topBar: !!spec.topBar });
+const specToStored = spec => ({ title: spec.title, tid: spec.tid || null, src: spec.base.src, bands: spec.base.bands || null, layers: spec.layers.map(l => ({ ...l })), topBar: !!spec.topBar });
 async function addToVault(spec) {
   const cv = exportCanvas(spec);
   if (!taintCheck(cv)) { toast("That one can't be saved.", "err"); return false; }
@@ -1342,7 +1405,8 @@ async function addToVault(spec) {
 }
 async function hydrate(s) {
   await preloadLayerImgs(s.layers || []);
-  return { title: s.title, tid: s.tid || undefined, base: { kind: "image", src: s.src, img: await loadImg(s.src, s.title) }, layers: s.layers.map(l => ({ ...l })), topBar: !!s.topBar };
+  const { img, bands } = s.bands ? await templateImage(s.src, s.title) : { img: await loadImg(s.src, s.title), bands: null };
+  return { title: s.title, tid: s.tid || undefined, base: { kind: "image", src: s.src, img, bands }, layers: s.layers.map(l => ({ ...l })), topBar: !!s.topBar };
 }
 async function renderVault() {
   const grid = $("#vaultGrid"), items = await storeAll("vault");
@@ -1740,7 +1804,7 @@ $("#panelBuild").onclick = async () => {
   const [W, H, rects] = { side: [1080, 560, [[0, 0, 536, 560], [544, 0, 536, 560]]],
     stack: [720, 908, [[0, 0, 720, 450], [0, 458, 720, 450]]],
     grid: [1080, 1008, [[0, 0, 536, 500], [544, 0, 536, 500], [0, 508, 536, 500], [544, 508, 536, 500]]] }[layout];
-  const imgs = await Promise.all(rects.map((_, i) => loadImg(panels[i].src, `Panel ${i + 1}`)));
+  const imgs = await Promise.all(rects.map(async (_, i) => (await templateImage(panels[i].src, `Panel ${i + 1}`)).img));
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const c = cv.getContext("2d"); c.fillStyle = INK; c.fillRect(0, 0, W, H);
   rects.forEach(([x, y, w, h], i) => drawCover(c, imgs[i], x, y, w, h));
