@@ -454,8 +454,12 @@ function loadImg(src, label = "") {
   const p = new Promise(res => {
     const i = new Image();
     if (/^https?:/.test(src)) i.crossOrigin = "anonymous";
-    i.onload = () => res(i);
-    i.onerror = () => { imgCache.delete(src); if (typeof markBroken === "function") markBroken(src); res(fallbackImage(label)); };
+    let triedAlt = false;
+    i.onerror = () => {
+      if (!triedAlt && /i\.imgflip\.com\/.+\.jpg$/.test(src)) { triedAlt = true; i.src = src.replace(/\.jpg$/, ".png"); return; }
+      imgCache.delete(src); if (typeof markBroken === "function") markBroken(src); res(fallbackImage(label));
+    };
+    i.onload = () => { if (triedAlt) fixTemplateUrl(src, i.src); res(i); };
     i.src = src;
   });
   imgCache.set(src, p); return p;
@@ -493,6 +497,7 @@ const Z = (label, x, y, w, size, style, extra = {}) => ({ label, x, y, w, size, 
 // zone shorthand: [label, x, y, maxWidth, fontSize(640 basis), "light"|"dark"|"lightLower"]
 const zs = arr => arr.map(([label, x, y, w, fs, kind]) => Z(label, x, y, w, Math.round(fs * 1.125),
   kind === "dark" ? { color: "#14110f", stroke: false, strokeColor: "#ffffff", font: "clean", upper: false }
+  : kind === "chalk" ? { color: "#f8fafc", stroke: false, strokeColor: "#000000", font: "comic", upper: false }
   : kind === "lightLower" ? { ...CLASSIC, upper: false } : CLASSIC));
 
 const CURATED = [
@@ -693,7 +698,46 @@ const MORE = [
     [["Top caption", .5, .12, .9, 34], ["Bottom caption", .5, .88, .9, 34]]]
 ].map(([id, name, url, themes, vibe, z]) => ({ id, name, url, themes, vibe, zones: zs(z), curated: true }));
 
-let TEMPLATES = [...CURATED.map(t => ({ ...t, curated: true, verified: true })), ...MORE];
+// Classic Simpsons templates. imgflip image links are the template ID in base 36 (verified against known templates).
+const u36 = (id, ext = "jpg") => `https://i.imgflip.com/${Number(id).toString(36)}.${ext}`;
+const SIMP = ["The Simpsons", "The Simpsons & Cartoons"];
+const SIMPSONS = [
+  ["16721465", "Homer Simpson in Bush", "jpg", ["School & Classroom"],
+    "Homer slowly backing into the hedge to disappear from an awkward or embarrassing situation",
+    [["The awkward moment", .5, .1, .92, 34], ["Me, retreating", .5, .9, .92, 34]]],
+  ["93160967", "Skinner Out Of Touch", "jpg", ["School & Classroom", "Politics & Debates"],
+    "Skinner briefly wonders if he's wrong, then decides everyone else must be ('Am I so out of touch? No, it's the children who are wrong')",
+    [["Am I so out of touch? (top panel)", .5, .42, .9, 30, "lightLower"], ["No, it's ___ who are wrong (bottom panel)", .5, .92, .9, 30, "lightLower"]]],
+  ["139917843", "Lisa Simpson's Presentation", "jpg", ["School & Classroom", "Politics & Debates"],
+    "Lisa confidently presenting a bold opinion or 'fact' on the big screen to an audience",
+    [["The slide (her bold claim)", .4, .36, .46, 26, "dark"]]],
+  ["60777140", "Bart Simpson Chalkboard", "jpg", ["School & Classroom"],
+    "Bart writing the same punishment line over and over on the chalkboard (one short sentence, repeated)",
+    [["Chalkboard line", .42, .3, .74, 24, "chalk"]]],
+  ["72525473", "Say the Line, Bart!", "jpg", ["School & Classroom", "Movies & TV"],
+    "Everyone begs for the famous catchphrase; Bart reluctantly says it; the crowd cheers wildly",
+    [["Everyone: Say the line, ___!", .5, .28, .92, 26, "lightLower"], ["The line", .5, .61, .92, 26, "lightLower"], ["Crowd cheers", .5, .94, .92, 26, "lightLower"]]],
+  ["64877458", "Old Man Yells at Cloud", "jpg", ["Politics & Debates", "School & Classroom"],
+    "Grandpa Simpson furiously shaking his fist at something new and harmless (newspaper headline style)",
+    [["Old man yells at…", .5, .1, .92, 34], ["Bottom caption", .5, .9, .92, 30]]],
+  ["152601039", "How I Sleep (Homer)", "jpg", ["School & Classroom", "Gaming & Tech"],
+    "Homer sleeping blissfully, unbothered: 'How I sleep knowing ___'",
+    [["How I sleep knowing…", .5, .12, .92, 30], ["Bottom (optional)", .5, .9, .92, 30]]],
+  ["21710292", "Hooray Homer", "jpg", ["School & Classroom"],
+    "Homer cheering with pure over-the-top joy (Woohoo!)",
+    [["Top caption", .5, .1, .92, 34], ["Bottom caption", .5, .9, .92, 34]]],
+  ["15017232", "Ralph Wiggum", "jpg", ["School & Classroom"],
+    "Ralph's sweet, cheerfully clueless take on the situation",
+    [["Top caption", .5, .1, .92, 34], ["Ralph's clueless line", .5, .9, .92, 34]]],
+  ["83337766", "Bart Simpson Sad", "jpg", ["School & Classroom"],
+    "Bart sitting sad and dejected after a small but crushing disappointment",
+    [["Top caption", .5, .1, .92, 34], ["Bottom caption", .5, .9, .92, 34]]],
+  ["197444410", "Lisa Simpson Computer", "jpg", ["School & Classroom", "Gaming & Tech"],
+    "Lisa nervously at a computer: caught doing something, or overwhelmed by screen tasks",
+    [["Top caption", .5, .1, .92, 32], ["Bottom caption", .5, .9, .92, 32]]]
+].map(([id, name, ext, themes, vibe, z]) => ({ id, name, url: u36(id, ext), themes: [...SIMP, ...themes], vibe, zones: zs(z), curated: true, simpsons: true }));
+
+let TEMPLATES = [...CURATED.map(t => ({ ...t, curated: true, verified: true })), ...SIMPSONS.map(t => ({ ...t, verified: true })), ...MORE];
 const tplById = id => TEMPLATES.find(t => t.id === String(id));
 
 function layersFromTemplate(t, captions = []) { return t.zones.map((z, i) => ({ ...z, text: captions[i] != null ? String(captions[i]) : "" })); }
@@ -716,6 +760,7 @@ async function loadMoreTemplates() {
     const extra = api.filter(m => !have.has(String(m.id))).map(m => {
       const n = m.name.toLowerCase(), th = [];
       if (/alien|ufo|space|star|trek|yoda|future|astronaut/.test(n)) th.push("Aliens & Sci-Fi");
+      if (/simpson|homer|bart|lisa|marge|skinner|ralph|milhouse|flanders|krusty|mr burns|moe/.test(n)) th.push("The Simpsons");
       if (/simpson|homer|bart|spongebob|patrick|squidward|kermit|arthur|cartoon|shrek|scooby|pooh|toy story|buzz|pikachu|tom/.test(n)) th.push("The Simpsons & Cartoons");
       if (/bernie|trump|biden|obama|president|politic|debate|senate|vote/.test(n)) th.push("Politics & Debates");
       if (/doge|cat|dog|monkey|bear|duck|penguin|bird|goose|frog|cheems|pigeon/.test(n)) th.push("Animals & Pets");
@@ -731,6 +776,7 @@ async function loadMoreTemplates() {
     renderTemplates(); renderSlots();
   } catch (e) {}
 }
+function fixTemplateUrl(oldUrl, newUrl) { const t = TEMPLATES.find(x => x.url === oldUrl); if (t) t.url = newUrl; }
 function markBroken(url) {
   const t = TEMPLATES.find(x => x.url === url);
   if (t && !t.broken) { t.broken = true; $("#tplCount").textContent = `${TEMPLATES.filter(x => !x.broken).length} templates.`; }
@@ -1117,7 +1163,7 @@ function memeCard(spec) {
 
 /* ================= Generate ================= */
 const THEMES = [["All", "🌐 All / Classic mix"], ["School & Classroom", "🏫 School"], ["Gaming & Tech", "🎮 Gaming & Tech"], ["Aliens & Sci-Fi", "🛸 Aliens & Sci-Fi"],
-  ["Animals & Pets", "🐾 Animals & Pets"], ["Movies & TV", "🎬 Movies & TV"], ["The Simpsons & Cartoons", "🍩 Cartoons"], ["Politics & Debates", "🏛️ Politics & Debates"], ["Custom", "✨ Custom…"]];
+  ["Animals & Pets", "🐾 Animals & Pets"], ["Movies & TV", "🎬 Movies & TV"], ["The Simpsons", "🍩 The Simpsons"], ["The Simpsons & Cartoons", "🖍️ Cartoons"], ["Politics & Debates", "🏛️ Politics & Debates"], ["Custom", "✨ Custom…"]];
 const TONES = ["Relatable", "Sarcastic", "Wholesome", "Teacher Life", "Tech / Dev", "Unhinged"];
 const SAMPLES = [["💻 Coding bug", "When you fix one bug in production and three older bugs wake up"],
   ["😴 Late night", "Me telling myself I'll go to bed early, at 1:45 AM"],
@@ -1129,6 +1175,7 @@ const SURPRISE = {
   "Aliens & Sci-Fi": "When the Wi-Fi drops at 2 AM and my brain immediately blames alien interference",
   "Animals & Pets": "My dog acting like he's never been fed, 4 minutes after dinner",
   "Movies & TV": "Rewatching a movie 10 years later and realizing the villain had a point",
+  "The Simpsons": "When the teacher asks who finished the reading and I slowly back away like Homer into the hedge",
   "The Simpsons & Cartoons": "Slowly backing into the bushes when someone asks who will organize the group project",
   "Politics & Debates": "Two people arguing for an hour, then realizing they agree"
 };
@@ -1216,8 +1263,8 @@ async function generate() {
 }
 
 /* ================= Templates tab ================= */
-const CATS = ["All", "Aliens & Sci-Fi", "The Simpsons & Cartoons", "Politics & Debates", "Gaming & Tech", "Animals & Pets", "Movies & TV", "School & Classroom"];
-const CAT_LABEL = { "All": "🌐 All", "Aliens & Sci-Fi": "🛸 Aliens & Sci-Fi", "The Simpsons & Cartoons": "🍩 Cartoons", "Politics & Debates": "🏛️ Politics", "Gaming & Tech": "🎮 Gaming & Tech", "Animals & Pets": "🐾 Animals", "Movies & TV": "🎬 Movies & TV", "School & Classroom": "🏫 School" };
+const CATS = ["All", "The Simpsons", "Aliens & Sci-Fi", "The Simpsons & Cartoons", "Politics & Debates", "Gaming & Tech", "Animals & Pets", "Movies & TV", "School & Classroom"];
+const CAT_LABEL = { "All": "🌐 All", "Aliens & Sci-Fi": "🛸 Aliens & Sci-Fi", "The Simpsons": "🍩 The Simpsons", "The Simpsons & Cartoons": "🖍️ Cartoons", "Politics & Debates": "🏛️ Politics", "Gaming & Tech": "🎮 Gaming & Tech", "Animals & Pets": "🐾 Animals", "Movies & TV": "🎬 Movies & TV", "School & Classroom": "🏫 School" };
 let cat = "All";
 function renderCats() {
   $("#catChips").innerHTML = CATS.map(c => `<button class="pill${c === cat ? " on" : ""}" data-c="${esc(c)}">${CAT_LABEL[c]}</button>`).join("");
@@ -1231,9 +1278,13 @@ function renderTemplates() {
   $("#tplGrid").innerHTML = list.length ? list.map(t => `<div class="meme-card tpl-card" data-id="${esc(t.id)}">
       <img src="${esc(t.url)}" alt="${esc(t.name)}" loading="lazy">
       <div class="mc-top"><span>${esc(t.name)}</span></div>
-      <div class="mc-meta">${t.zones.length} text box${t.zones.length === 1 ? "" : "es"}${t.curated ? " · mapped" : ""}</div></div>`).join("")
+      <div class="mc-meta">${t.zones.length} text box${t.zones.length === 1 ? "" : "es"}${t.simpsons ? " · 🍩" : t.curated ? " · mapped" : ""}</div></div>`).join("")
     : `<p class="sub">No templates match. Try clearing the search or picking All.</p>`;
-  $$("#tplGrid img").forEach(img => img.addEventListener("error", () => { markBroken(img.getAttribute("src")); img.closest(".tpl-card")?.remove(); }));
+  $$("#tplGrid img").forEach(img => img.addEventListener("error", () => {
+    const src = img.getAttribute("src");
+    if (/\.jpg$/.test(src) && !img.dataset.alt) { img.dataset.alt = src; const png = src.replace(/\.jpg$/, ".png"); fixTemplateUrl(src, png); img.src = png; return; }
+    markBroken(img.dataset.alt || src); markBroken(src); img.closest(".tpl-card")?.remove();
+  }));
 }
 $("#tplGrid").onclick = async e => {
   const card = e.target.closest(".tpl-card"); if (!card) return;
