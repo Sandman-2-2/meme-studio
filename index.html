@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meme Studio</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Meme Studio">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffd23f">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bangers&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+
+:root{--ink:#14110f;--paper:#fff8e7;--yellow:#ffd23f;--pink:#ff5c8a;--blue:#3a86ff;--green:#2ec4b6;--amber:#ffb703;--muted:#6b6259;--shadow:4px 4px 0 var(--ink)}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--paper);background-image:radial-gradient(rgba(20,17,15,.08) 1.2px,transparent 1.4px);background-size:14px 14px;min-height:100vh}
+body.noscroll{overflow:hidden}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+.hidden{display:none!important}
+button{font-family:inherit;color:inherit}
+
+/* Header */
+header.top{position:sticky;top:0;z-index:20;background:var(--yellow);border-bottom:3px solid var(--ink)}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;padding-bottom:10px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:46px;height:46px;border:3px solid var(--ink);border-radius:12px;background:var(--pink);display:grid;place-items:center;font-size:26px;box-shadow:3px 3px 0 var(--ink);transform:rotate(-5deg);flex:none}
+h1{font-family:Bangers,cursive;font-weight:400;letter-spacing:1.5px;font-size:32px;margin:0;line-height:1}
+.brand p{margin:2px 0 0;font-size:12px;font-weight:700}
+.chip{font-size:12px;font-weight:700;border:2px solid var(--ink);border-radius:999px;padding:6px 11px;background:#fff;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:#a8a29e;border:1.5px solid var(--ink)}
+.chip.on .dot{background:#22c55e}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;font:700 14px Inter,sans-serif;padding:9px 14px;border:2px solid var(--ink);border-radius:12px;background:#fff;cursor:pointer;box-shadow:2px 2px 0 var(--ink);display:flex;align-items:center;gap:6px}
+.tab.active{background:var(--ink);color:#fff}
+.count{background:var(--pink);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;border:1.5px solid var(--ink)}
+
+main{padding:24px 0 70px}
+.view{display:flex;flex-direction:column;gap:22px}
+.card{background:#fff;border:3px solid var(--ink);border-radius:18px;box-shadow:var(--shadow);padding:20px}
+.card-head{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
+h2{font-family:Bangers,cursive;font-weight:400;letter-spacing:1px;font-size:30px;margin:0;line-height:1.05}
+h3{font-family:Bangers,cursive;font-weight:400;letter-spacing:1px;font-size:24px;margin:0}
+.sub{color:var(--muted);font-size:13.5px;margin:4px 0 0;line-height:1.45}
+.badge{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;background:var(--pink);color:#fff;border:2px solid var(--ink);border-radius:999px;padding:3px 9px;margin-bottom:8px}
+
+textarea,input[type=text],select{font:500 15px Inter,sans-serif;color:var(--ink);background:#fffdf7;border:2px solid var(--ink);border-radius:12px;padding:12px 14px;width:100%;outline:none;resize:vertical}
+textarea:focus,input[type=text]:focus,select:focus{box-shadow:0 0 0 3px var(--yellow)}
+.row-label{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.7px}
+.link{background:none;border:none;font:800 13px Inter,sans-serif;color:#c2410c;cursor:pointer;padding:0;text-transform:none;letter-spacing:0}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.pill{font:700 13px Inter,sans-serif;padding:7px 12px;border:2px solid var(--ink);border-radius:999px;background:#fff;cursor:pointer}
+.pill.on{background:var(--yellow);box-shadow:2px 2px 0 var(--ink)}
+.pill.tone.on{background:var(--blue);color:#fff}
+.samples{display:flex;gap:6px;flex-wrap:wrap}
+.sample{font:600 12px Inter,sans-serif;padding:6px 10px;border:1.5px dashed var(--ink);border-radius:10px;background:#fffdf7;cursor:pointer}
+.sample:hover{background:var(--yellow)}
+#customTheme{margin-top:10px}
+
+.btn{font:800 14px Inter,sans-serif;border:2px solid var(--ink);border-radius:12px;background:#fff;padding:10px 14px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .07s,box-shadow .07s;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.btn:hover{filter:brightness(1.04)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn[disabled]{opacity:.65;cursor:progress;transform:none}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.green{background:var(--green)}
+.btn.pink{background:var(--pink);color:#fff}
+.btn.yellow{background:var(--yellow)}
+.btn.big{font-size:17px;padding:14px 22px}
+.btn.small{padding:7px 10px;font-size:13px;box-shadow:2px 2px 0 var(--ink)}
+.btn.tiny{padding:4px 8px;font-size:12px;box-shadow:2px 2px 0 var(--ink);border-radius:9px}
+.btn.ghost{background:transparent;box-shadow:none}
+.icon-btn{background:#fff;border:2px solid var(--ink);border-radius:9px;width:30px;height:30px;cursor:pointer;font-size:14px;display:grid;place-items:center;flex:none}
+.icon-btn:hover{background:var(--yellow)}
+.icon-btn.starred{background:var(--yellow)}
+
+.gen-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.gen-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;user-select:none}
+.toggle input{width:18px;height:18px;accent-color:var(--blue)}
+
+.results-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.grid4{display:grid;align-items:start;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
+.meme-card{background:#fff;border:3px solid var(--ink);border-radius:16px;box-shadow:var(--shadow);padding:10px;display:flex;flex-direction:column;gap:10px;animation:pop .3s ease both}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.mc-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.mc-top span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-canvas canvas{width:100%;height:auto;display:block;border:2px solid var(--ink);border-radius:10px;cursor:pointer;background:#eee}
+.mc-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mc-actions .btn{padding:8px 4px;font-size:12.5px;box-shadow:2px 2px 0 var(--ink)}
+.mc-meta{font-size:11.5px;color:var(--muted);margin-top:-4px}
+.skel{border:3px solid var(--ink);border-radius:16px;background:#fff;box-shadow:var(--shadow);aspect-ratio:3/4;position:relative;overflow:hidden}
+.skel::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,210,63,.45) 50%,transparent 70%);animation:shine 1.1s infinite}
+@keyframes shine{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.skel span{position:absolute;inset:auto 0 40% 0;text-align:center;font-size:40px}
+
+.search{max-width:320px}
+.fmt-card .how{font-size:12.5px;color:var(--muted);line-height:1.4;margin:0}
+
+/* Photo */
+.drop{display:block;border:3px dashed var(--ink);border-radius:16px;padding:34px 16px;text-align:center;cursor:pointer;background:#fffdf7;transition:background .15s}
+.drop:hover,.drop.over{background:#fff3c4}
+.drop-emoji{font-size:44px}
+.drop b{display:block;font-size:17px;margin-top:6px}
+.drop span{font-size:13px;color:var(--muted)}
+.photo-work{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.9fr);gap:20px;align-items:start}
+@media(max-width:760px){.photo-work{grid-template-columns:1fr}}
+.photo-work canvas{width:100%;height:auto;display:block;border:2px solid var(--ink);border-radius:12px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.idea{width:100%;text-align:left;background:#fffdf7;border:2px solid var(--ink);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:13.5px;line-height:1.4;box-shadow:2px 2px 0 var(--ink)}
+.idea:hover{background:#fff3c4}
+.idea b{display:block}
+
+/* Panels */
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:6px}
+.slot{border:2px solid var(--ink);border-radius:14px;padding:10px;background:#fffdf7;display:flex;flex-direction:column;gap:8px}
+.slot-head{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:13px}
+.slot-prev{aspect-ratio:16/11;border:2px solid var(--ink);border-radius:10px;overflow:hidden;display:grid;place-items:center;font-size:54px;background-size:cover;background-position:center}
+.slot-tools{display:flex;gap:6px}
+.slot input[type=text]{padding:9px 11px;font-size:14px}
+.panel-foot{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.panel-foot input{flex:1;min-width:220px}
+
+/* Scene */
+.scene-result{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.8fr);gap:20px;align-items:start}
+@media(max-width:760px){.scene-result{grid-template-columns:1fr}}
+.scene-result canvas{width:100%;display:block;border:2px solid var(--ink);border-radius:12px}
+
+/* Vault */
+.vault-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.vault-card img{width:100%;display:block;border:2px solid var(--ink);border-radius:10px;cursor:pointer}
+.empty{text-align:center;padding:40px 16px;border:3px dashed var(--ink);border-radius:18px;background:#fffdf7}
+.empty div{font-size:46px}
+
+/* Editor */
+.overlay{position:fixed;inset:0;background:rgba(20,17,15,.62);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px}
+.editor{background:var(--paper);border:3px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--ink);width:100%;max-width:1120px;display:flex;flex-direction:column;margin:auto 0}
+.editor-head,.editor-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;background:var(--yellow);border-bottom:3px solid var(--ink);border-radius:17px 17px 0 0}
+.editor-foot{border-top:3px solid var(--ink);border-bottom:none;border-radius:0 0 17px 17px;background:#fff;justify-content:flex-end;flex-wrap:wrap}
+.editor-body{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);gap:16px;padding:16px}
+.stage{background:#fff;border:2px solid var(--ink);border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;align-self:start;position:sticky;top:0;z-index:2}
+#edCanvas{max-width:100%;max-height:64vh;width:auto;height:auto;touch-action:none;cursor:grab;border-radius:8px;border:2px solid var(--ink);display:block}
+#edCanvas.dragging{cursor:grabbing}
+.hint{font-size:12px;color:var(--muted);margin:0;text-align:center}
+.controls{display:flex;flex-direction:column;gap:12px;min-width:0}
+.seg{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fff;border:2px solid var(--ink);border-radius:12px;padding:8px 10px;font-size:13px;font-weight:800}
+.seg div{display:flex;gap:6px}
+.segbtn{font:700 12px Inter,sans-serif;border:2px solid var(--ink);border-radius:9px;padding:5px 9px;background:#fff;cursor:pointer}
+.segbtn.on{background:var(--ink);color:#fff}
+.layer{background:#fff;border:2px solid var(--ink);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.layer.sel{box-shadow:0 0 0 3px var(--blue)}
+.layer-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.layer-name{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layer-tools{display:flex;gap:6px;align-items:center}
+.layer textarea{padding:9px 11px;font-size:14.5px;min-height:46px}
+.layer-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mini{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;text-transform:uppercase;flex:1;min-width:120px}
+.mini input{flex:1;accent-color:var(--blue)}
+.layer select{width:auto;padding:5px 8px;font-size:13px;border-radius:9px}
+.layer input[type=color]{width:32px;height:30px;border:2px solid var(--ink);border-radius:8px;padding:0;background:#fff;cursor:pointer}
+.tgl{font:800 12px Inter,sans-serif;border:2px solid var(--ink);border-radius:9px;padding:5px 8px;background:#fff;cursor:pointer}
+.tgl.on{background:var(--ink);color:#fff}
+.punch{display:flex;flex-direction:column;gap:6px}
+.punch button{text-align:left;background:#fffdf7;border:2px solid var(--ink);border-radius:10px;padding:7px 9px;cursor:pointer;font-size:13px}
+.punch button:hover{background:#fff3c4}
+.punch small{display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;color:#c2410c}
+@media(max-width:860px){.editor-body{grid-template-columns:1fr}#edCanvas{max-height:42vh}.overlay{padding:6px}}
+
+/* Save sheet */
+.sheet{background:#fff;border:3px solid var(--ink);border-radius:18px;box-shadow:6px 6px 0 var(--ink);max-width:520px;width:100%;padding:16px;display:flex;flex-direction:column;gap:12px;margin:auto 0}
+.sheet img{max-width:100%;max-height:60vh;margin:0 auto;display:block;border:2px solid var(--ink);border-radius:10px}
+.sheet p{margin:0;font-size:13.5px;background:#fff3c4;border:2px solid var(--ink);border-radius:10px;padding:10px}
+
+/* Toasts */
+#toasts{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:min(92vw,440px)}
+.toast{background:#fff;border:2px solid var(--ink);border-radius:12px;box-shadow:3px 3px 0 var(--ink);padding:10px 14px;font-weight:700;font-size:13.5px;text-align:center;animation:pop .2s ease both;transition:opacity .3s,transform .3s}
+.toast.ok{background:#bbf7d0}.toast.err{background:#fecaca}
+footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
+
+.tpl-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;border:2px solid var(--ink);border-radius:10px;background:#eee}
+.tpl-card{cursor:pointer}
+.tpl-card .mc-meta{margin:0}
+.chip.btnlike{cursor:pointer}
+.key-box{display:flex;flex-direction:column;gap:10px}
+.key-box a{color:#c2410c;font-weight:700}
+.scene-opts{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
+.scene-opts label.f{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px}
+.scene-opts select{width:auto}
+.slot select{padding:6px 8px;font-size:13px;border-radius:9px;width:100%}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand">
+      <div class="logo">😎</div>
+      <div><h1>MEME STUDIO</h1><p>Make it. Caption it. Send it.</p></div>
+    </div>
+    <button id="aiChip" class="chip btnlike" title="AI settings"><span class="dot"></span><span id="aiChipText">Instant mode</span></button>
+  </div>
+  <nav class="wrap tabs" id="tabs">
+    <button class="tab active" data-tab="generate">⚡ Generate</button>
+    <button class="tab" data-tab="templates">🖼️ Templates</button>
+    <button class="tab" data-tab="photo">📷 Your Photo</button>
+    <button class="tab" data-tab="panels">🧩 Panels</button>
+    <button class="tab" data-tab="scene">🎨 AI Scene</button>
+    <button class="tab" data-tab="vault">🗄️ Vault <span class="count" id="vaultCount">0</span></button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <!-- GENERATE -->
+  <section class="view" id="view-generate">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>What's the situation?</h2>
+          <p class="sub">Describe a moment, an inside joke, or a daily struggle. AI pairs it with 4 classic templates and writes the punchlines.</p>
+        </div>
+        <div class="samples" id="samples"></div>
+      </div>
+      <textarea id="prompt" rows="3" placeholder="e.g. Day four of indoor recess and the LEGO bin has formed a government"></textarea>
+      <div class="row-label"><span>Theme / Universe</span><button class="link" id="surpriseBtn">🎲 Surprise me</button></div>
+      <div class="chips" id="themeChips"></div>
+      <input type="text" id="customTheme" class="hidden" placeholder="Any fandom, hobby, or universe (D&D, 90s nostalgia, cooking shows, robotics club…)">
+      <div class="gen-foot">
+        <div>
+          <div class="row-label"><span>Tone</span></div>
+          <div class="chips" id="toneChips"></div>
+        </div>
+        <div class="gen-actions">
+          <label class="toggle"><input type="checkbox" id="gRated" checked><span>Keep it G-rated</span></label>
+          <button class="btn primary big" id="generateBtn">⚡ Generate 4 Memes</button>
+        </div>
+      </div>
+    </div>
+    <div class="results-head"><h3 id="resultsTitle">Starter memes</h3><span class="sub">Tap any meme to edit it</span></div>
+    <div class="grid4" id="results"></div>
+  </section>
+
+  <!-- TEMPLATES -->
+  <section class="view hidden" id="view-templates">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Classic template library</h2>
+          <p class="sub">Tap any template to open it in the editor. <span id="tplCount"></span></p>
+        </div>
+        <input type="text" id="tplSearch" class="search" placeholder="Search (Drake, aliens, buttons…)">
+      </div>
+      <div class="chips" id="catChips" style="margin-bottom:16px"></div>
+      <div class="grid4" id="tplGrid"></div>
+    </div>
+  </section>
+
+  <!-- PHOTO -->
+  <section class="view hidden" id="view-photo">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Meme your own photo</h2>
+          <p class="sub">Use your pet, a classroom moment, or any image. It stays on your device unless you ask the AI to caption it.</p>
+        </div>
+      </div>
+      <label class="drop" id="drop">
+        <input type="file" accept="image/*" id="photoInput" hidden>
+        <div class="drop-emoji">📷</div><b>Choose a photo</b><span>or drop one here</span>
+      </label>
+      <div id="photoWork" class="photo-work hidden">
+        <div><canvas id="photoCanvas"></canvas></div>
+        <div class="stack">
+          <button class="btn primary" id="photoAi">✨ Write captions for me</button>
+          <button class="btn" id="photoEdit">✏️ Write my own</button>
+          <button class="btn ghost" id="photoNew">Choose a different photo</button>
+          <div id="photoIdeas" class="stack"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PANELS -->
+  <section class="view hidden" id="view-panels">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Multi-panel builder</h2>
+          <p class="sub">Expectation vs. reality, or a 4-step escalation. Mix classic templates and your own photos.</p>
+        </div>
+        <div class="chips" id="layoutChips">
+          <button class="pill on" data-layout="side">2 side-by-side</button>
+          <button class="pill" data-layout="stack">2 stacked</button>
+          <button class="pill" data-layout="grid">4-panel grid</button>
+        </div>
+      </div>
+      <div class="slots" id="slots"></div>
+      <div class="panel-foot">
+        <input type="text" id="panelTopic" placeholder="Topic for AI captions (e.g. Monday 7:45 AM vs Friday 3:15 PM)">
+        <button class="btn" id="panelAi">✨ AI caption panels</button>
+        <button class="btn primary" id="panelBuild">Open in editor →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE -->
+  <section class="view hidden" id="view-scene">
+    <div class="card">
+      <span class="badge">Absurd literal mode</span>
+      <h2>Custom AI scene</h2>
+      <p class="sub">No classic template fits your joke? Describe a scene. Gemini generates a fresh reaction image and captions it.</p>
+      <textarea id="scenePrompt" rows="3" style="margin-top:14px" placeholder="e.g. A medieval knight standing confused at a grocery self-checkout"></textarea>
+      <div class="samples" id="sceneSamples" style="margin-top:10px"></div>
+      <div class="scene-opts">
+        <label class="f">Visual style
+          <select id="sceneStyle">
+            <option value="photorealistic candid reaction photo">Candid reaction photo</option>
+            <option value="dramatic cinematic movie still">Cinematic movie still</option>
+            <option value="bold, colorful Saturday-morning cartoon illustration">Classic cartoon</option>
+            <option value="classic Renaissance oil painting">Renaissance painting</option>
+            <option value="grainy 1990s sitcom screenshot">90s sitcom screenshot</option>
+            <option value="3D animated movie render">3D animated render</option>
+          </select>
+        </label>
+        <label class="toggle"><input type="checkbox" id="sceneCaptions" checked><span>Write captions too</span></label>
+        <button class="btn pink big" id="sceneBtn" style="margin-left:auto">🎨 Generate scene</button>
+      </div>
+    </div>
+    <div class="card hidden" id="sceneCard">
+      <div class="scene-result">
+        <canvas id="sceneCanvas"></canvas>
+        <div class="stack">
+          <h3>Your scene</h3>
+          <button class="btn primary" id="sceneEdit">✏️ Edit text</button>
+          <button class="btn" id="sceneCopy">📋 Copy</button>
+          <button class="btn green" id="sceneSave">⬇️ Save / Share</button>
+          <button class="btn" id="sceneVault">🗄️ Save to Vault</button>
+          <button class="btn ghost" id="sceneAgain">🔁 Try another take</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VAULT -->
+  <section class="view hidden" id="view-vault">
+    <div class="card vault-bar">
+      <div>
+        <h2>Your vault</h2>
+        <p class="sub">Saved in this browser on this device. Export a backup to move memes to another device.</p>
+      </div>
+      <div class="chips">
+        <button class="btn small" id="vaultExport">📤 Export backup</button>
+        <label class="btn small">📥 Import backup<input type="file" accept="application/json,.json" id="vaultImport" hidden></label>
+      </div>
+    </div>
+    <div class="grid4" id="vaultGrid"></div>
+  </section>
+</main>
+<footer>Meme Studio · Personal edition · Templates load from imgflip.com · No watermarks</footer>
+
+<!-- EDITOR -->
+<div class="overlay hidden" id="editor" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+  <div class="editor">
+    <div class="editor-head">
+      <h3 id="edTitle">Editor</h3>
+      <button class="btn small" id="edClose">✕ Close</button>
+    </div>
+    <div class="editor-body">
+      <div class="stage">
+        <canvas id="edCanvas"></canvas>
+        <p class="hint">Drag a caption to move it. Tap one to select it.</p>
+      </div>
+      <div class="controls">
+        <div class="seg"><span>Caption style</span><div><button class="segbtn on" id="modeOverlay">Classic overlay</button><button class="segbtn" id="modeBar">Top bar</button></div></div>
+        <div class="row-label" style="margin:2px 0 0"><span>Text boxes</span><button class="btn tiny" id="addLayer">+ Add text</button></div>
+        <div id="layers" class="stack"></div>
+      </div>
+    </div>
+    <div class="editor-foot">
+      <button class="btn" id="edCopy">📋 Copy</button>
+      <button class="btn green" id="edSave">⬇️ Save / Share</button>
+      <button class="btn primary" id="edVault">🗄️ Save to Vault</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE SHEET (mobile fallback) -->
+<div class="overlay hidden" id="sheet">
+  <div class="sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3>Save your meme</h3><button class="btn small" id="sheetClose">✕</button></div>
+    <p id="sheetMsg"></p>
+    <img id="sheetImg" alt="Finished meme">
+    <button class="btn green" id="sheetDownload">⬇️ Download PNG</button>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay hidden" id="settings">
+  <div class="sheet key-box">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3>AI settings</h3><button class="btn small" id="settingsClose">✕</button></div>
+    <p>The AI features use Google Gemini. Paste a free API key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. It's saved only in this browser, never in the page's code, so it stays private even on a public GitHub Pages site.</p>
+    <input type="text" id="keyInput" placeholder="AIza…" autocomplete="off" spellcheck="false">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn primary" id="keySave">Save key</button>
+      <button class="btn" id="keyTest">Test it</button>
+      <button class="btn ghost" id="keyClear">Remove key</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* ================= Utilities ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const clamp = (v, a, b) => Math.min(b, Math.max(a, Number.isFinite(+v) ? +v : a));
+const slug = s => String(s || "meme").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "meme";
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const INK = "#14110f";
+
+function toast(msg, kind = "") {
+  const t = document.createElement("div");
+  t.className = "toast " + kind; t.textContent = msg;
+  $("#toasts").appendChild(t);
+  setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(8px)"; setTimeout(() => t.remove(), 300); }, 3000);
+}
+function busy(btn, on, label) {
+  if (on) { btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = label; }
+  else { btn.disabled = false; if (btn.dataset.orig) btn.innerHTML = btn.dataset.orig; }
+}
+function fallbackImage(label) {
+  const c = document.createElement("canvas"); c.width = 720; c.height = 720;
+  const x = c.getContext("2d");
+  x.fillStyle = "#e7e5e4"; x.fillRect(0, 0, 720, 720);
+  x.fillStyle = "#78716c"; x.font = "700 30px Inter, sans-serif"; x.textAlign = "center";
+  x.fillText("Couldn't load template", 360, 340); x.font = "500 24px Inter, sans-serif"; x.fillText(label || "", 360, 385);
+  c.isFallback = true; return c;
+}
+const imgCache = new Map();
+function loadImg(src, label = "") {
+  if (imgCache.has(src)) return imgCache.get(src);
+  const p = new Promise(res => {
+    const i = new Image();
+    if (/^https?:/.test(src)) i.crossOrigin = "anonymous";
+    i.onload = () => res(i);
+    i.onerror = () => { imgCache.delete(src); res(fallbackImage(label)); };
+    i.src = src;
+  });
+  imgCache.set(src, p); return p;
+}
+const iw = i => i.naturalWidth || i.width, ih = i => i.naturalHeight || i.height;
+async function fileToSrc(file, maxW = 1080) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const s = Math.min(1, maxW / img.naturalWidth), c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+    const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", .88);
+  } finally { URL.revokeObjectURL(url); }
+}
+function scaledCanvas(src, maxW) {
+  const s = Math.min(1, maxW / iw(src)), c = document.createElement("canvas");
+  c.width = Math.round(iw(src) * s); c.height = Math.round(ih(src) * s);
+  const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+const toBlob = (cv, type = "image/png", q) => new Promise(r => cv.toBlob(r, type, q));
+const blobToB64 = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(",")[1]); fr.readAsDataURL(b); });
+function halftone(c, x, y, w, h, color, gap = 16, r = 2.2) {
+  c.fillStyle = color;
+  for (let yy = y + gap / 2, row = 0; yy < y + h; yy += gap, row++)
+    for (let xx = x + gap / 2 + (row % 2 ? gap / 2 : 0); xx < x + w; xx += gap) { c.beginPath(); c.arc(xx, yy, r, 0, 7); c.fill(); }
+}
+
+/* ================= Classic templates (imgflip) ================= */
+const FONTS = { impact: "Anton, Impact, 'Arial Black', sans-serif", comic: "Bangers, 'Comic Sans MS', cursive", clean: "Inter, system-ui, sans-serif" };
+const WEIGHT = { impact: "400", comic: "400", clean: "800" };
+const CLASSIC = { color: "#ffffff", stroke: true, strokeColor: "#000000", font: "impact", upper: true };
+const Z = (label, x, y, w, size, style, extra = {}) => ({ label, x, y, w, size, ...style, ...extra });
+// zone shorthand: [label, x, y, maxWidth, fontSize(640 basis), "light"|"dark"|"lightLower"]
+const zs = arr => arr.map(([label, x, y, w, fs, kind]) => Z(label, x, y, w, Math.round(fs * 1.125),
+  kind === "dark" ? { color: "#14110f", stroke: false, strokeColor: "#ffffff", font: "clean", upper: false }
+  : kind === "lightLower" ? { ...CLASSIC, upper: false } : CLASSIC));
+
+const CURATED = [
+  { id: "181913649", name: "Drake Hotline Bling", url: "https://i.imgflip.com/30b1gx.jpg", themes: ["Gaming & Tech", "School & Classroom", "Movies & TV"],
+    vibe: "Rejecting something bad or boring vs approving something great or smart",
+    zones: zs([["Top right (reject)", .74, .25, .44, 34, "dark"], ["Bottom right (approve)", .74, .75, .44, 34, "dark"]]) },
+  { id: "101470", name: "Ancient Aliens", url: "https://i.imgflip.com/26am.jpg", themes: ["Aliens & Sci-Fi", "Gaming & Tech", "School & Classroom"],
+    vibe: "Blaming a mysterious problem or unexplained event on Aliens",
+    zones: zs([["Top setup", .5, .12, .9, 36], ["Bottom one-word answer", .5, .88, .9, 40]]) },
+  { id: "252600902", name: "Always Has Been", url: "https://i.imgflip.com/46e43q.png", themes: ["Aliens & Sci-Fi", "Politics & Debates", "Gaming & Tech"],
+    vibe: "Two astronauts in space realizing a shocking truth that was obvious from the start",
+    zones: zs([["Astronaut 1 (Wait, it's all...)", .36, .18, .42, 26, "lightLower"], ["Astronaut 2 (Always has been)", .76, .28, .38, 26, "lightLower"]]) },
+  { id: "196652226", name: "Spongebob Ight Imma Head Out", url: "https://i.imgflip.com/392xtu.jpg", themes: ["The Simpsons & Cartoons", "School & Classroom", "Gaming & Tech"],
+    vibe: "Immediately leaving a room, conversation, or meeting the second things get weird",
+    zones: zs([["Top setup", .5, .12, .9, 34], ["Bottom punchline", .5, .88, .9, 34]]) },
+  { id: "178591752", name: "Tuxedo Winnie The Pooh", url: "https://i.imgflip.com/2ybua0.png", themes: ["The Simpsons & Cartoons", "Animals & Pets", "School & Classroom"],
+    vibe: "Regular plain phrasing vs fancy aristocratic phrasing for the exact same thing",
+    zones: zs([["Regular Pooh (top right)", .74, .25, .44, 28, "dark"], ["Fancy Pooh (bottom right)", .74, .75, .44, 28, "dark"]]) },
+  { id: "102156234", name: "Mocking SpongeBob", url: "https://i.imgflip.com/1otk96.jpg", themes: ["The Simpsons & Cartoons", "Politics & Debates", "School & Classroom"],
+    vibe: "Mocking a ridiculous rule, excuse, or statement in alternating caps",
+    zones: zs([["Top setup", .5, .12, .9, 34, "lightLower"], ["Bottom mocking reply", .5, .88, .9, 34, "lightLower"]]) },
+  { id: "222403160", name: "Bernie I Am Once Again Asking", url: "https://i.imgflip.com/3oevdk.jpg", themes: ["Politics & Debates", "School & Classroom", "Gaming & Tech"],
+    vibe: "Politely begging for something you have already asked for way too many times",
+    zones: zs([["Bottom caption", .5, .88, .9, 32]]) },
+  { id: "129242436", name: "Change My Mind", url: "https://i.imgflip.com/24y43o.jpg", themes: ["Politics & Debates", "Movies & TV", "Gaming & Tech", "School & Classroom"],
+    vibe: "Stating a bold, controversial, or hilariously true opinion confidently at a debate table",
+    zones: zs([["Sign text", .58, .72, .46, 26, "dark"]]) },
+  { id: "1035805", name: "Boardroom Meeting Suggestion", url: "https://i.imgflip.com/m78d.jpg", themes: ["Politics & Debates", "Gaming & Tech", "School & Classroom"],
+    vibe: "Two employees giving bad corporate answers while the third suggests common sense (and gets thrown out the window)",
+    zones: zs([["Boss question (top)", .5, .08, .9, 24, "dark"], ["Bad idea 1 (left)", .22, .44, .28, 20, "dark"], ["Bad idea 2 (center)", .52, .44, .26, 20, "dark"], ["Common sense (right)", .82, .44, .28, 20, "dark"]]) },
+  { id: "87743020", name: "Two Buttons", url: "https://i.imgflip.com/1g8my4.jpg", themes: ["Politics & Debates", "The Simpsons & Cartoons", "Gaming & Tech"],
+    vibe: "Sweating over an impossible choice between two conflicting options",
+    zones: zs([["Left button", .3, .17, .26, 24, "dark"], ["Right button", .56, .13, .25, 24, "dark"], ["Person sweating", .5, .9, .85, 32]]) },
+  { id: "112126428", name: "Distracted Boyfriend", url: "https://i.imgflip.com/1ur9b0.jpg", themes: ["Movies & TV", "Gaming & Tech", "School & Classroom"],
+    vibe: "Being tempted by a shiny new distraction while ignoring your current duty",
+    zones: zs([["New distraction (left)", .23, .68, .35, 30], ["You (center)", .57, .46, .28, 30], ["Ignored duty (right)", .84, .58, .28, 30]]) },
+  { id: "93895088", name: "Expanding Brain", url: "https://i.imgflip.com/1jwhww.jpg", themes: ["Aliens & Sci-Fi", "Gaming & Tech", "School & Classroom"],
+    vibe: "Escalating levels of ideas from basic to cosmic galaxy-brain absurd",
+    zones: zs([["Level 1", .26, .13, .45, 26, "dark"], ["Level 2", .26, .38, .45, 26, "dark"], ["Level 3", .26, .63, .45, 26, "dark"], ["Level 4", .26, .88, .45, 26, "dark"]]) },
+  { id: "188390779", name: "Woman Yelling At Cat", url: "https://i.imgflip.com/345v97.jpg", themes: ["Animals & Pets", "Politics & Debates", "Movies & TV"],
+    vibe: "Someone angrily accusing vs a cat completely unbothered and confused",
+    zones: zs([["Angry yelling (left)", .25, .12, .44, 28], ["Unbothered cat (right)", .75, .12, .44, 28]]) },
+  { id: "55311130", name: "This Is Fine", url: "https://i.imgflip.com/wxica.jpg", themes: ["Animals & Pets", "The Simpsons & Cartoons", "Gaming & Tech", "Politics & Debates", "School & Classroom"],
+    vibe: "Pretending everything is totally fine while everything around you is burning",
+    zones: zs([["Top caption", .5, .1, .9, 34], ["Bottom caption", .5, .9, .9, 34]]) },
+  { id: "131940431", name: "Gru's Plan", url: "https://i.imgflip.com/26jxvz.jpg", themes: ["The Simpsons & Cartoons", "Movies & TV", "School & Classroom"],
+    vibe: "A 4-step plan that starts great; step 3 reveals the flaw and step 4 repeats it as Gru double-takes",
+    zones: zs([["Step 1", .36, .22, .25, 22, "dark"], ["Step 2", .85, .22, .25, 22, "dark"], ["Backfire", .36, .74, .25, 22, "dark"], ["Double take (same as backfire)", .85, .74, .25, 22, "dark"]]) },
+  { id: "91538330", name: "X, X Everywhere", url: "https://i.imgflip.com/1ihzfe.jpg", themes: ["The Simpsons & Cartoons", "Movies & TV", "Aliens & Sci-Fi", "School & Classroom"],
+    vibe: "Buzz Lightyear and Woody pointing out an overwhelming flood of something chaotic",
+    zones: zs([["Top statement", .5, .12, .9, 36], ["Bottom everywhere", .5, .88, .9, 36]]) },
+  { id: "247375501", name: "Buff Doge vs. Cheems", url: "https://i.imgflip.com/43a45p.png", themes: ["Animals & Pets", "Gaming & Tech", "Politics & Debates"],
+    vibe: "Comparing how tough things used to be vs how weak they are now",
+    zones: zs([["Buff Doge (left)", .25, .14, .44, 26, "dark"], ["Cheems (right)", .75, .14, .44, 26, "dark"]]) },
+  { id: "148909805", name: "Monkey Puppet", url: "https://i.imgflip.com/2gnnjh.jpg", themes: ["Animals & Pets", "The Simpsons & Cartoons", "School & Classroom", "Politics & Debates"],
+    vibe: "Awkwardly looking sideways and pretending not to notice",
+    zones: zs([["Top caption", .5, .12, .9, 32], ["Bottom caption", .5, .88, .9, 32]]) },
+  { id: "61579", name: "One Does Not Simply", url: "https://i.imgflip.com/1bij.jpg", themes: ["Movies & TV", "Aliens & Sci-Fi", "Gaming & Tech"],
+    vibe: "Pointing out how difficult a supposedly simple task actually is",
+    zones: zs([["Top caption", .5, .12, .9, 36], ["Bottom punchline", .5, .88, .9, 36]]) },
+  { id: "217743513", name: "UNO Draw 25 Cards", url: "https://i.imgflip.com/3lmzyx.jpg", themes: ["Gaming & Tech", "Politics & Debates", "School & Classroom"],
+    vibe: "Choosing to suffer a massive penalty rather than do one simple reasonable thing",
+    zones: zs([["Card text (left)", .3, .45, .34, 24, "dark"], ["Holding 25 cards", .74, .85, .38, 28]]) }
+];
+let TEMPLATES = CURATED.map(t => ({ ...t, curated: true }));
+const tplById = id => TEMPLATES.find(t => t.id === String(id));
+
+function layersFromTemplate(t, captions = []) { return t.zones.map((z, i) => ({ ...z, text: captions[i] != null ? String(captions[i]) : "" })); }
+async function specFromTemplate(t, captions) {
+  return { title: t.name, base: { kind: "image", src: t.url, img: await loadImg(t.url, t.name) }, layers: layersFromTemplate(t, captions), topBar: false };
+}
+async function loadMoreTemplates() {
+  try {
+    const res = await fetch("https://api.imgflip.com/get_memes");
+    const data = await res.json();
+    if (!data?.success) return;
+    const have = new Set(TEMPLATES.map(t => t.id));
+    const extra = data.data.memes.filter(m => !have.has(m.id)).slice(0, 40).map(m => {
+      const n = m.name.toLowerCase(), th = [];
+      if (/alien|ufo|space|star|trek|yoda|future|astronaut/.test(n)) th.push("Aliens & Sci-Fi");
+      if (/simpson|homer|bart|spongebob|patrick|squidward|kermit|arthur|cartoon|shrek|scooby|pooh|toy story|buzz/.test(n)) th.push("The Simpsons & Cartoons");
+      if (/bernie|trump|biden|obama|president|politic|debate|senate|vote/.test(n)) th.push("Politics & Debates");
+      if (/doge|cat|dog|monkey|bear|duck|penguin|bird|goose|frog|cheems/.test(n)) th.push("Animals & Pets");
+      if (/game|gamer|minecraft|stonks|pc|code|hack|computer/.test(n)) th.push("Gaming & Tech");
+      if (/office|michael|dwight|dicaprio|leo|thanos|batman|spider|joker|matrix|movie|wolf/.test(n)) th.push("Movies & TV");
+      const boxes = Math.max(1, Math.min(4, m.box_count || 2));
+      const zones = boxes <= 2
+        ? zs(boxes === 1 ? [["Bottom text", .5, .88, .9, 36]] : [["Top text", .5, .12, .9, 36], ["Bottom text", .5, .88, .9, 36]])
+        : zs(Array.from({ length: boxes }, (_, i) => [`Box ${i + 1}`, .5, (i + .5) / boxes, .9, 28]));
+      return { id: m.id, name: m.name, url: m.url, themes: th, vibe: `Classic "${m.name}" format (${boxes} text boxes)`, zones, curated: false };
+    });
+    TEMPLATES = [...TEMPLATES, ...extra];
+    renderTemplates(); renderSlots();
+  } catch (e) {}
+}
+
+/* ================= Renderer ================= */
+function baseSize(b) {
+  const w = iw(b.img), h = ih(b.img), W = Math.max(720, Math.min(1080, w));
+  return [W, Math.round(h * W / w)];
+}
+function wrap(c, text, maxW) {
+  const out = [];
+  String(text).split("\n").forEach(par => {
+    let cur = "";
+    par.split(/\s+/).filter(Boolean).forEach(w => {
+      const t = cur ? cur + " " + w : w;
+      if (c.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t;
+    });
+    if (cur) out.push(cur);
+  });
+  return out;
+}
+const fontFor = (l, px) => `${WEIGHT[l.font] || "800"} ${px}px ${FONTS[l.font] || FONTS.clean}`;
+function renderMeme(cv, base, layers, topBar = false, sel = -1) {
+  const [W, H] = baseSize(base), k = W / 720, c = cv.getContext("2d");
+  const head = topBar && layers[0] && layers[0].text.trim() ? layers[0] : null;
+  let barH = 0, barLines = [];
+  const barPx = Math.round(34 * k);
+  if (head) {
+    c.font = `700 ${barPx}px ${FONTS.clean}`;
+    barLines = wrap(c, head.text.trim(), W - 64 * k);
+    barH = Math.round(barLines.length * barPx * 1.25 + 40 * k);
+  }
+  cv.width = W; cv.height = H + barH;
+  c.drawImage(base.img, 0, barH, W, H);
+  const boxes = [];
+  if (barH) {
+    c.fillStyle = "#fff"; c.fillRect(0, 0, W, barH);
+    c.fillStyle = INK; c.font = `700 ${barPx}px ${FONTS.clean}`; c.textAlign = "left"; c.textBaseline = "top";
+    barLines.forEach((ln, j) => c.fillText(ln, 32 * k, 20 * k + j * barPx * 1.25));
+    boxes[0] = { x: 0, y: 0, w: W, h: barH, fixed: true };
+  }
+  layers.forEach((l, i) => {
+    if (i === 0 && topBar) return;
+    const txt = (l.text || "").trim(), raw = l.upper ? txt.toUpperCase() : txt;
+    let px = Math.round((l.size || 36) * k);
+    const maxW = (l.w || .9) * W;
+    c.font = fontFor(l, px);
+    const words = raw.split(/\s+/);
+    while (px > 12 && words.some(w => c.measureText(w).width > maxW)) { px -= 2; c.font = fontFor(l, px); }
+    const lines = raw ? wrap(c, raw, maxW) : [];
+    const lh = px * 1.12, bh = Math.max(lines.length, 1) * lh;
+    const cx = l.x * W, cy = barH + l.y * H, top = cy - bh / 2;
+    c.textAlign = "center"; c.textBaseline = "middle"; c.lineJoin = "round"; c.miterLimit = 2;
+    lines.forEach((ln, j) => {
+      const y = top + lh * j + lh / 2;
+      if (l.stroke) { c.strokeStyle = l.strokeColor || "#000"; c.lineWidth = Math.max(3, px * .17); c.strokeText(ln, cx, y); }
+      c.fillStyle = l.color || "#fff"; c.fillText(ln, cx, y);
+    });
+    const tw = lines.length ? Math.max(...lines.map(s => c.measureText(s).width)) : Math.min(maxW, 160 * k);
+    boxes[i] = { x: cx - tw / 2 - 12 * k, y: top - 8 * k, w: tw + 24 * k, h: bh + 16 * k };
+  });
+  if (sel >= 0 && boxes[sel] && !boxes[sel].fixed) {
+    const b = boxes[sel];
+    c.save(); c.setLineDash([10 * k, 7 * k]); c.lineWidth = 3 * k;
+    c.strokeStyle = "#fff"; c.strokeRect(b.x, b.y, b.w, b.h);
+    c.lineDashOffset = 10 * k; c.strokeStyle = "#3a86ff"; c.strokeRect(b.x, b.y, b.w, b.h); c.restore();
+  }
+  return { boxes, W, H, barH };
+}
+function exportCanvas(spec) { const cv = document.createElement("canvas"); renderMeme(cv, spec.base, spec.layers, spec.topBar, -1); return cv; }
+const cloneSpec = s => ({ title: s.title, base: s.base, layers: s.layers.map(l => ({ ...l })), topBar: !!s.topBar });
+
+/* ================= Gemini ================= */
+const KEY_STORE = "memeStudio.geminiKey";
+const getKey = () => { try { return (localStorage.getItem(KEY_STORE) || "").trim(); } catch (e) { return ""; } };
+const hasAI = () => !!getKey();
+function syncAiChip() {
+  const on = hasAI();
+  $("#aiChip").classList.toggle("on", on);
+  $("#aiChipText").textContent = on ? "AI ready" : "Add AI key";
+}
+const TEXT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+async function gemini(parts, json = true) {
+  const key = getKey();
+  if (!key) { openSettings(); throw { code: "nokey" }; }
+  let last;
+  for (const model of TEXT_MODELS) {
+    try {
+      const body = { contents: [{ role: "user", parts }] };
+      if (json) body.generationConfig = { responseMimeType: "application/json", temperature: 1 };
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (r.status === 400 || r.status === 403) { const t = await r.text(); if (/API key/i.test(t)) { toast("Gemini rejected that API key. Check it in AI settings.", "err"); throw { code: "badkey" }; } }
+      if (r.status === 429) { toast("Gemini is rate-limiting. Wait a moment and try again.", "err"); throw { code: "rate" }; }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const d = await r.json();
+      const text = d?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("");
+      if (!text) throw new Error("Empty response");
+      return text;
+    } catch (e) { last = e; if (e && e.code) throw e; }
+  }
+  throw last || new Error("Gemini unavailable");
+}
+function parseLoose(t) {
+  t = String(t || "").replace(/```(?:json)?/gi, "").trim();
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a < 0 || b < a) throw new Error("No JSON");
+  return JSON.parse(t.slice(a, b + 1));
+}
+async function askJSON(prompt, { images } = {}) {
+  const parts = [{ text: prompt }];
+  if (images) for (const blob of images) parts.push({ inlineData: { mimeType: blob.type || "image/jpeg", data: await blobToB64(blob) } });
+  return parseLoose(await gemini(parts, true));
+}
+async function geminiImage(prompt) {
+  const key = getKey();
+  if (!key) { openSettings(); throw { code: "nokey" }; }
+  const models = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
+  for (const m of models) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: m.includes("preview") ? ["TEXT", "IMAGE"] : ["IMAGE"] } })
+      });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const part = d?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+      if (part) return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`;
+    } catch (e) {}
+  }
+  try {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${encodeURIComponent(key)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instances: [{ prompt }], parameters: { sampleCount: 1 } })
+    });
+    if (r.ok) { const d = await r.json(); const b = d?.predictions?.[0]?.bytesBase64Encoded; if (b) return `data:image/png;base64,${b}`; }
+  } catch (e) {}
+  throw new Error("No image");
+}
+const noDash = s => String(s ?? "").replace(/\s*[—–]\s*/g, ", ").trim();
+const safety = () => $("#gRated").checked
+  ? "AUDIENCE: Must be G-rated and school-appropriate. No profanity, innuendo, insults about groups, or anything mean-spirited."
+  : "AUDIENCE: Adults, but keep it good-natured. No slurs or hateful content.";
+
+/* Settings modal */
+function openSettings() { $("#keyInput").value = getKey(); openOverlay("#settings"); setTimeout(() => $("#keyInput").focus(), 50); }
+$("#aiChip").onclick = openSettings;
+$("#settingsClose").onclick = () => closeOverlay("#settings");
+$("#keySave").onclick = () => {
+  const v = $("#keyInput").value.trim();
+  try { v ? localStorage.setItem(KEY_STORE, v) : localStorage.removeItem(KEY_STORE); } catch (e) { toast("This browser won't save settings.", "err"); }
+  syncAiChip(); toast(v ? "Key saved in this browser" : "Key removed", "ok"); if (v) closeOverlay("#settings");
+};
+$("#keyClear").onclick = () => { try { localStorage.removeItem(KEY_STORE); } catch (e) {} $("#keyInput").value = ""; syncAiChip(); toast("Key removed"); };
+$("#keyTest").onclick = async () => {
+  const v = $("#keyInput").value.trim(); if (!v) return toast("Paste a key first.", "err");
+  try { localStorage.setItem(KEY_STORE, v); } catch (e) {}
+  syncAiChip();
+  const btn = $("#keyTest"); busy(btn, true, "⏳ Testing…");
+  try { const out = await askJSON('Reply with ONLY JSON: {"ok":true}'); toast(out.ok ? "It works! AI is ready." : "Got a reply, but an odd one.", out.ok ? "ok" : ""); }
+  catch (e) { if (!e || !e.code) toast("Couldn't reach Gemini with that key.", "err"); }
+  busy(btn, false);
+};
+
+/* ================= Copy / Save / Share ================= */
+function taintCheck(cv) { try { cv.getContext("2d").getImageData(0, 0, 1, 1); return true; } catch (e) { return false; } }
+async function copyCanvas(cv) {
+  if (!taintCheck(cv)) return toast("That template blocked copying. Try Save instead.", "err");
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error("no clipboard");
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": toBlob(cv) })]);
+    toast("Copied! Paste it into any chat.", "ok");
+  } catch (e) { showSheet(cv, "Long-press (phone) or right-click (computer) the image and choose Copy."); }
+}
+async function saveCanvas(cv, name) {
+  if (!taintCheck(cv)) return toast("That template couldn't be exported.", "err");
+  const filename = `${slug(name)}-${Date.now().toString(36)}.png`;
+  if (isMobile && navigator.canShare) {
+    try {
+      const file = new File([await toBlob(cv)], filename, { type: "image/png" });
+      if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Meme" }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  if (isMobile) return showSheet(cv, "Press and hold the image, then tap Save to Photos (or Copy).", filename);
+  downloadURL(cv.toDataURL("image/png"), filename); toast("Downloading PNG…", "ok");
+}
+function downloadURL(url, filename) { const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); }
+let sheetFile = "meme.png";
+function showSheet(cv, msg, filename = "meme.png") {
+  sheetFile = filename; $("#sheetMsg").textContent = msg; $("#sheetImg").src = cv.toDataURL("image/png"); openOverlay("#sheet");
+}
+$("#sheetDownload").onclick = () => downloadURL($("#sheetImg").src, sheetFile);
+function openOverlay(id) { $(id).classList.remove("hidden"); document.body.classList.add("noscroll"); }
+function closeOverlay(id) { $(id).classList.add("hidden"); if (!$$(".overlay:not(.hidden)").length) document.body.classList.remove("noscroll"); }
+$("#sheetClose").onclick = () => closeOverlay("#sheet");
+["sheet", "settings", "editor"].forEach(id => $("#" + id).addEventListener("click", e => { if (e.target.id === id) closeOverlay("#" + id); }));
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  const open = $$(".overlay:not(.hidden)"); if (open.length) closeOverlay("#" + open[open.length - 1].id);
+});
+
+/* ================= Vault ================= */
+const VKEY = "memeStudio.vault.v2";
+function vaultRead() { try { return JSON.parse(localStorage.getItem(VKEY) || "[]"); } catch (e) { return []; } }
+function vaultWrite(a) {
+  try { localStorage.setItem(VKEY, JSON.stringify(a)); return true; }
+  catch (e) { toast("The vault is full on this device. Export a backup, then delete a few.", "err"); return false; }
+}
+function updateVaultCount() { $("#vaultCount").textContent = vaultRead().length; }
+function addToVault(spec) {
+  const cv = exportCanvas(spec);
+  if (!taintCheck(cv)) { toast("That one can't be saved.", "err"); return false; }
+  const thumb = scaledCanvas(cv, 520).toDataURL("image/jpeg", .8);
+  const a = vaultRead();
+  a.unshift({ id: uid(), title: spec.title, created: new Date().toISOString(), thumb,
+    spec: { title: spec.title, src: spec.base.src, layers: spec.layers.map(l => ({ ...l })), topBar: !!spec.topBar } });
+  if (a.length > 50) a.length = 50;
+  if (vaultWrite(a)) { toast("Saved to your vault", "ok"); updateVaultCount(); if (!$("#view-vault").classList.contains("hidden")) renderVault(); return true; }
+  return false;
+}
+async function hydrate(s) { return { title: s.title, base: { kind: "image", src: s.src, img: await loadImg(s.src, s.title) }, layers: s.layers.map(l => ({ ...l })), topBar: !!s.topBar }; }
+function renderVault() {
+  const grid = $("#vaultGrid"), items = vaultRead();
+  updateVaultCount();
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div>🗄️</div><h3>Nothing saved yet</h3><p class="sub">Tap ☆ on any meme or use "Save to Vault" in the editor.</p></div>`;
+    return;
+  }
+  grid.innerHTML = "";
+  items.forEach(item => {
+    const el = document.createElement("div");
+    el.className = "meme-card vault-card";
+    el.innerHTML = `<div class="mc-top"><span>${esc(item.title)}</span><button class="icon-btn" data-a="del" title="Delete">🗑</button></div>
+      <img src="${item.thumb}" alt="${esc(item.title)}">
+      <div class="mc-meta">${new Date(item.created).toLocaleDateString()}</div>
+      <div class="mc-actions"><button class="btn" data-a="edit">✏️ Edit</button><button class="btn" data-a="copy">📋 Copy</button><button class="btn green" data-a="save">⬇️ Save</button></div>`;
+    el.addEventListener("click", async e => {
+      const a = e.target.closest("[data-a]")?.dataset.a || (e.target.tagName === "IMG" ? "edit" : null);
+      if (!a) return;
+      if (a === "del") { vaultWrite(vaultRead().filter(x => x.id !== item.id)); renderVault(); toast("Removed from vault"); return; }
+      const spec = await hydrate(item.spec);
+      if (a === "edit") openEditor(spec);
+      if (a === "copy") copyCanvas(exportCanvas(spec));
+      if (a === "save") saveCanvas(exportCanvas(spec), spec.title);
+    });
+    grid.appendChild(el);
+  });
+}
+$("#vaultExport").onclick = () => {
+  const items = vaultRead();
+  if (!items.length) return toast("The vault is empty, so there's nothing to export yet.");
+  const blob = new Blob([JSON.stringify({ app: "meme-studio", version: 2, items })], { type: "application/json" });
+  const url = URL.createObjectURL(blob); downloadURL(url, `meme-vault-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  setTimeout(() => URL.revokeObjectURL(url), 2000); toast("Backup downloaded", "ok");
+};
+$("#vaultImport").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const parsed = JSON.parse(await f.text());
+    const items = (Array.isArray(parsed) ? parsed : parsed.items || []).filter(x => x && x.spec && x.spec.src && x.thumb);
+    if (!items.length) throw new Error("empty");
+    const have = new Set(vaultRead().map(x => x.id));
+    if (vaultWrite([...items.filter(x => !have.has(x.id)), ...vaultRead()].slice(0, 50))) { renderVault(); toast(`Imported ${items.length} meme${items.length === 1 ? "" : "s"}`, "ok"); }
+  } catch (err) { toast("That file isn't a Meme Studio backup.", "err"); }
+};
+
+/* ================= Meme cards ================= */
+function memeCard(spec) {
+  const el = document.createElement("div");
+  el.className = "meme-card";
+  el.innerHTML = `<div class="mc-top"><span>${esc(spec.title)}</span><button class="icon-btn" data-a="vault" title="Save to vault">☆</button></div>
+    <div class="mc-canvas"><canvas></canvas></div>
+    <div class="mc-actions"><button class="btn" data-a="edit">✏️ Edit</button><button class="btn" data-a="copy">📋 Copy</button><button class="btn green" data-a="save">⬇️ Save</button></div>`;
+  renderMeme($("canvas", el), spec.base, spec.layers, spec.topBar);
+  el.addEventListener("click", e => {
+    const btn = e.target.closest("[data-a]");
+    const a = btn?.dataset.a || (e.target.tagName === "CANVAS" ? "edit" : null);
+    if (a === "edit") openEditor(cloneSpec(spec));
+    if (a === "copy") copyCanvas(exportCanvas(spec));
+    if (a === "save") saveCanvas(exportCanvas(spec), spec.title);
+    if (a === "vault" && addToVault(spec)) { btn.textContent = "★"; btn.classList.add("starred"); }
+  });
+  return el;
+}
+
+/* ================= Generate ================= */
+const THEMES = [["All", "🌐 All / Classic mix"], ["School & Classroom", "🏫 School"], ["Gaming & Tech", "🎮 Gaming & Tech"], ["Aliens & Sci-Fi", "🛸 Aliens & Sci-Fi"],
+  ["Animals & Pets", "🐾 Animals & Pets"], ["Movies & TV", "🎬 Movies & TV"], ["The Simpsons & Cartoons", "🍩 Cartoons"], ["Politics & Debates", "🏛️ Politics & Debates"], ["Custom", "✨ Custom…"]];
+const TONES = ["Relatable", "Sarcastic", "Wholesome", "Teacher Life", "Tech / Dev", "Unhinged"];
+const SAMPLES = [["💻 Coding bug", "When you fix one bug in production and three older bugs wake up"],
+  ["😴 Late night", "Me telling myself I'll go to bed early, at 1:45 AM"],
+  ["📚 Teacher life", "When you finally sit down and three kids need a tissue at the same time"]];
+const SURPRISE = {
+  "All": "Closing 38 browser tabs after solving a 5-minute problem in 3 hours",
+  "School & Classroom": "When the bell rings in 30 seconds and someone raises their hand to ask about homework",
+  "Gaming & Tech": "The tutorial boss takes 3 tries, the final boss takes 1, and a random staircase ends the run",
+  "Aliens & Sci-Fi": "When the Wi-Fi drops at 2 AM and my brain immediately blames alien interference",
+  "Animals & Pets": "My dog acting like he's never been fed, 4 minutes after dinner",
+  "Movies & TV": "Rewatching a movie 10 years later and realizing the villain had a point",
+  "The Simpsons & Cartoons": "Slowly backing into the bushes when someone asks who will organize the group project",
+  "Politics & Debates": "Two people arguing for an hour, then realizing they agree"
+};
+let theme = "All", tone = "Relatable";
+$("#samples").innerHTML = SAMPLES.map(([l, p]) => `<button class="sample" data-p="${esc(p)}">${l}</button>`).join("");
+$("#samples").onclick = e => { const b = e.target.closest(".sample"); if (b) { $("#prompt").value = b.dataset.p; $("#prompt").focus(); } };
+$("#themeChips").innerHTML = THEMES.map(([v, l]) => `<button class="pill${v === theme ? " on" : ""}" data-v="${esc(v)}">${l}</button>`).join("");
+$("#themeChips").onclick = e => {
+  const b = e.target.closest(".pill"); if (!b) return;
+  theme = b.dataset.v; $$(".pill", $("#themeChips")).forEach(x => x.classList.toggle("on", x === b));
+  $("#customTheme").classList.toggle("hidden", theme !== "Custom"); if (theme === "Custom") $("#customTheme").focus();
+  if (CATS.includes(theme)) { cat = theme; renderCats(); renderTemplates(); }
+};
+$("#toneChips").innerHTML = TONES.map(t => `<button class="pill tone${t === tone ? " on" : ""}" data-v="${esc(t)}">${t}</button>`).join("");
+$("#toneChips").onclick = e => { const b = e.target.closest(".pill"); if (!b) return; tone = b.dataset.v; $$(".pill", $("#toneChips")).forEach(x => x.classList.toggle("on", x === b)); };
+const themeLabel = () => theme === "Custom" ? ($("#customTheme").value.trim() || "Pop culture") : theme;
+$("#surpriseBtn").onclick = () => { const t = themeLabel(); $("#prompt").value = SURPRISE[t] || `Something hilariously relatable in the world of ${t}`; generate(); };
+$("#prompt").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); });
+$("#generateBtn").onclick = () => generate();
+
+function templatePool(th) {
+  const matched = th === "All" ? [] : TEMPLATES.filter(t => t.themes.includes(th));
+  const pool = matched.length >= 4 ? [...matched, ...CURATED.slice(0, 8)] : [...TEMPLATES];
+  const seen = new Set();
+  return pool.filter(t => !seen.has(t.id) && seen.add(t.id)).slice(0, 34);
+}
+function genPrompt(situation, th, pool) {
+  const cat = pool.map(t => `- id "${t.id}" | ${t.name} | ${t.vibe} | ${t.zones.length} box${t.zones.length > 1 ? "es" : ""}: [${t.zones.map(z => z.label).join(" | ")}]`).join("\n");
+  return `You are an expert internet meme writer who knows exactly how each classic meme template is used. Make 4 memes about the situation below, each with a DIFFERENT template from the catalog. Choose templates whose real-world usage fits the joke.
+
+SITUATION: "${situation}"
+THEME / UNIVERSE: ${th === "All" ? "A versatile mix of classic formats." : `${th}. Prefer templates tagged for it and work in its tropes and references.`}
+TONE: ${tone}
+${safety()}
+
+CATALOG (captions array must have exactly as many strings as the template has boxes, in the order listed):
+${cat}
+
+RULES: Each box under 12 words. Land the punchline in the last box. Be specific and surprising. No em dashes. No hashtags.
+
+Reply with ONLY JSON: {"memes":[{"templateId":"...","captions":["..."]}]}`;
+}
+function validMemes(arr) {
+  if (!Array.isArray(arr)) return null;
+  const seen = new Set();
+  const out = arr.filter(m => m && tplById(m.templateId) && Array.isArray(m.captions) && !seen.has(String(m.templateId)) && seen.add(String(m.templateId)))
+    .slice(0, 4).map(m => ({ t: tplById(m.templateId), captions: m.captions.map(x => noDash(x).slice(0, 160)) }));
+  return out.length ? out : null;
+}
+function fallbackMemes(p, th) {
+  const s = noDash(p).slice(0, 70), T = id => tplById(id);
+  if (th === "Aliens & Sci-Fi") return [{ t: T("101470"), captions: [s, "Aliens"] }, { t: T("252600902"), captions: [`Wait, it's all ${s.slice(0, 30)}?`, "Always has been"] },
+    { t: T("93895088"), captions: ["Normal explanation", "Coincidence", "Top secret experiment", s] }, { t: T("55311130"), captions: [s, "This is fine"] }];
+  if (th === "Politics & Debates") return [{ t: T("222403160"), captions: [`I am once again asking about ${s}`] }, { t: T("129242436"), captions: [s] },
+    { t: T("87743020"), captions: ["Admit the mistake", "Blame the other side", s] }, { t: T("1035805"), captions: [`How do we fix ${s.slice(0, 32)}?`, "More meetings", "Ignore it", "Actually solve it"] }];
+  return [{ t: T("55311130"), captions: [s, "This is fine"] }, { t: T("129242436"), captions: [s] },
+    { t: T("181913649"), captions: ["Handling it like an adult", s] }, { t: T("196652226"), captions: [s, "Ight imma head out"] }];
+}
+async function renderResults(list) {
+  const g = $("#results");
+  const specs = await Promise.all(list.map(m => specFromTemplate(m.t, m.captions)));
+  g.innerHTML = ""; specs.forEach(s => g.appendChild(memeCard(s)));
+}
+async function generate() {
+  let p = $("#prompt").value.trim();
+  const th = themeLabel();
+  if (!p) {
+    if (th !== "All") p = `Something hilariously relatable in the world of ${th}`;
+    else { toast("Type a situation first, or tap Surprise me.", "err"); $("#prompt").focus(); return; }
+  }
+  const btn = $("#generateBtn"); busy(btn, true, "⏳ Cooking up memes…");
+  $("#results").innerHTML = ["😂", "🤔", "😎", "🔥"].map(x => `<div class="skel"><span>${x}</span></div>`).join("");
+  $("#resultsTitle").textContent = "Matching templates & writing punchlines…";
+  let memes = null;
+  if (hasAI()) { try { memes = validMemes((await askJSON(genPrompt(p, th, templatePool(th)))).memes); } catch (e) {} }
+  const usedAI = !!memes;
+  if (!memes) memes = fallbackMemes(p, th);
+  await renderResults(memes);
+  $("#resultsTitle").textContent = usedAI ? `Fresh memes · ${th === "All" ? tone : th + " · " + tone}` : "Quick memes (instant mode)";
+  toast(usedAI ? "4 fresh memes, hot off the press!" : hasAI() ? "AI didn't answer, so here are quick memes instead." : "Instant mode. Add a Gemini key for AI captions.", usedAI ? "ok" : "");
+  busy(btn, false);
+}
+
+/* ================= Templates tab ================= */
+const CATS = ["All", "Aliens & Sci-Fi", "The Simpsons & Cartoons", "Politics & Debates", "Gaming & Tech", "Animals & Pets", "Movies & TV", "School & Classroom"];
+const CAT_LABEL = { "All": "🌐 All", "Aliens & Sci-Fi": "🛸 Aliens & Sci-Fi", "The Simpsons & Cartoons": "🍩 Cartoons", "Politics & Debates": "🏛️ Politics", "Gaming & Tech": "🎮 Gaming & Tech", "Animals & Pets": "🐾 Animals", "Movies & TV": "🎬 Movies & TV", "School & Classroom": "🏫 School" };
+let cat = "All";
+function renderCats() {
+  $("#catChips").innerHTML = CATS.map(c => `<button class="pill${c === cat ? " on" : ""}" data-c="${esc(c)}">${CAT_LABEL[c]}</button>`).join("");
+}
+$("#catChips").onclick = e => { const b = e.target.closest(".pill"); if (!b) return; cat = b.dataset.c; renderCats(); renderTemplates(); };
+$("#tplSearch").oninput = () => renderTemplates();
+function renderTemplates() {
+  const q = $("#tplSearch").value.trim().toLowerCase();
+  const list = TEMPLATES.filter(t => (cat === "All" || t.themes.includes(cat)) && (!q || (t.name + " " + t.vibe).toLowerCase().includes(q)));
+  $("#tplCount").textContent = `${TEMPLATES.length} templates loaded.`;
+  $("#tplGrid").innerHTML = list.length ? list.map(t => `<div class="meme-card tpl-card" data-id="${esc(t.id)}">
+      <img src="${esc(t.url)}" alt="${esc(t.name)}" loading="lazy">
+      <div class="mc-top"><span>${esc(t.name)}</span></div>
+      <div class="mc-meta">${t.zones.length} text box${t.zones.length === 1 ? "" : "es"}${t.curated ? " · mapped" : ""}</div></div>`).join("")
+    : `<p class="sub">No templates match. Try clearing the search or picking All.</p>`;
+}
+$("#tplGrid").onclick = async e => {
+  const card = e.target.closest(".tpl-card"); if (!card) return;
+  const t = tplById(card.dataset.id);
+  openEditor(await specFromTemplate(t, t.zones.map((z, i) => i === 0 ? "Top text" : i === t.zones.length - 1 ? "Bottom text" : z.label)));
+};
+
+/* ================= Photo ================= */
+let photo = null;
+const photoLayers = (top, bottom) => [Z("Top text", .5, .1, .92, 44, CLASSIC, { text: top }), Z("Bottom text", .5, .9, .92, 44, CLASSIC, { text: bottom })];
+async function takePhoto(file) {
+  if (!file || !file.type.startsWith("image/")) return toast("Please choose an image file.", "err");
+  try {
+    const src = await fileToSrc(file);
+    photo = { kind: "image", src, img: await loadImg(src) };
+    renderMeme($("#photoCanvas"), photo, []);
+    $("#photoIdeas").innerHTML = "";
+    $("#drop").classList.add("hidden"); $("#photoWork").classList.remove("hidden");
+  } catch (e) { toast("Couldn't read that image.", "err"); }
+}
+$("#photoInput").onchange = e => { takePhoto(e.target.files[0]); e.target.value = ""; };
+["dragover", "dragenter"].forEach(ev => $("#drop").addEventListener(ev, e => { e.preventDefault(); $("#drop").classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => $("#drop").addEventListener(ev, e => { e.preventDefault(); $("#drop").classList.remove("over"); }));
+$("#drop").addEventListener("drop", e => takePhoto(e.dataTransfer.files[0]));
+$("#photoNew").onclick = () => { photo = null; $("#photoWork").classList.add("hidden"); $("#drop").classList.remove("hidden"); };
+const photoSpec = (t, b) => ({ title: "Photo Meme", base: photo, layers: photoLayers(t, b), topBar: false });
+$("#photoEdit").onclick = () => photo && openEditor(photoSpec("Top text", "Bottom text"));
+$("#photoAi").onclick = async () => {
+  if (!photo) return;
+  if (!hasAI()) return openSettings();
+  const btn = $("#photoAi"); busy(btn, true, "⏳ Studying your photo…");
+  try {
+    const blob = await toBlob(scaledCanvas(photo.img, 768), "image/jpeg", .85);
+    const out = await askJSON(`Look at this photo and write 3 different funny two-line meme captions based on the expressions, body language and scene. Tone: ${tone}. ${safety()} Each line under 9 words. No em dashes.
+Reply with ONLY JSON: {"ideas":[{"top":"","bottom":""}]}`, { images: [blob] });
+    const ideas = (out.ideas || []).filter(x => x && (x.top || x.bottom)).slice(0, 3);
+    if (!ideas.length) throw new Error("none");
+    $("#photoIdeas").innerHTML = `<div class="row-label" style="margin:8px 0 0"><span>Pick a caption</span></div>` +
+      ideas.map((x, i) => `<button class="idea" data-i="${i}"><b>${esc(noDash(x.top))}</b>${esc(noDash(x.bottom))}</button>`).join("");
+    $$(".idea", $("#photoIdeas")).forEach(b => b.onclick = () => { const x = ideas[+b.dataset.i]; openEditor(photoSpec(noDash(x.top), noDash(x.bottom))); });
+  } catch (e) { if (!e || !e.code) toast("Couldn't caption that photo right now.", "err"); }
+  busy(btn, false);
+};
+
+/* ================= Panels ================= */
+let layout = "side";
+const panels = [
+  { src: "https://i.imgflip.com/30b1gx.jpg", caption: "Expectation" },
+  { src: "https://i.imgflip.com/wxica.jpg", caption: "Reality" },
+  { src: "https://i.imgflip.com/26am.jpg", caption: "Level 3" },
+  { src: "https://i.imgflip.com/1jwhww.jpg", caption: "Level 4" }];
+const panelCount = () => layout === "grid" ? 4 : 2;
+function renderSlots() {
+  const n = panelCount(), wrapEl = $("#slots"); wrapEl.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const p = panels[i], el = document.createElement("div");
+    const isTpl = TEMPLATES.some(t => t.url === p.src);
+    el.className = "slot";
+    el.innerHTML = `<div class="slot-head"><span>Panel ${i + 1}</span><label class="btn tiny">📁 Upload<input type="file" accept="image/*" hidden></label></div>
+      <select title="Template">${isTpl ? "" : `<option value="">Your photo</option>`}${TEMPLATES.map(t => `<option value="${esc(t.url)}"${t.url === p.src ? " selected" : ""}>${esc(t.name)}</option>`).join("")}</select>
+      <div class="slot-prev" style="background-image:url('${p.src}')"></div>
+      <input type="text" value="${esc(p.caption)}" placeholder="Panel ${i + 1} caption">`;
+    $("select", el).onchange = e => { if (e.target.value) { p.src = e.target.value; renderSlots(); } };
+    $("input[type=file]", el).onchange = async e => { const f = e.target.files[0]; if (!f) return; try { p.src = await fileToSrc(f); renderSlots(); } catch (err) { toast("Couldn't read that image.", "err"); } };
+    $("input[type=text]", el).oninput = e => p.caption = e.target.value;
+    wrapEl.appendChild(el);
+  }
+}
+$("#layoutChips").onclick = e => { const b = e.target.closest(".pill"); if (!b) return; layout = b.dataset.layout; $$(".pill", $("#layoutChips")).forEach(x => x.classList.toggle("on", x === b)); renderSlots(); };
+function drawCover(c, img, x, y, w, h) {
+  const s = Math.max(w / iw(img), h / ih(img)), sw = w / s, sh = h / s;
+  c.drawImage(img, (iw(img) - sw) / 2, (ih(img) - sh) / 2, sw, sh, x, y, w, h);
+}
+$("#panelBuild").onclick = async () => {
+  const [W, H, rects] = { side: [1080, 560, [[0, 0, 536, 560], [544, 0, 536, 560]]],
+    stack: [720, 908, [[0, 0, 720, 450], [0, 458, 720, 450]]],
+    grid: [1080, 1008, [[0, 0, 536, 500], [544, 0, 536, 500], [0, 508, 536, 500], [544, 508, 536, 500]]] }[layout];
+  const imgs = await Promise.all(rects.map((_, i) => loadImg(panels[i].src, `Panel ${i + 1}`)));
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const c = cv.getContext("2d"); c.fillStyle = INK; c.fillRect(0, 0, W, H);
+  rects.forEach(([x, y, w, h], i) => drawCover(c, imgs[i], x, y, w, h));
+  if (!taintCheck(cv)) return toast("One of those templates blocked editing. Try a different one.", "err");
+  const src = cv.toDataURL("image/jpeg", .9), img = await loadImg(src);
+  const layers = rects.map(([x, y, w, h], i) => Z(`Panel ${i + 1}`, (x + w / 2) / W, (y + h * .86) / H, (w * .9) / W, layout === "stack" ? 42 : 30, CLASSIC, { text: panels[i].caption }));
+  openEditor({ title: "Multi-Panel Meme", base: { kind: "image", src, img }, layers, topBar: false });
+};
+$("#panelAi").onclick = async () => {
+  if (!hasAI()) return openSettings();
+  const n = panelCount(), topic = $("#panelTopic").value.trim() || "Expectation vs. reality";
+  const btn = $("#panelAi"); busy(btn, true, "⏳ Writing…");
+  try {
+    const out = await askJSON(`Write ${n} short, funny captions for a ${n}-panel meme about: "${topic}". ${n === 2 ? "It's a comparison: panel 1 is the setup or ideal, panel 2 is the twist or reality." : "It's an escalation: each panel more intense or absurd than the last."} Tone: ${tone}. ${safety()} Each caption under 8 words. No em dashes.
+Reply with ONLY JSON: {"captions":["..."]}`);
+    (out.captions || []).slice(0, n).forEach((t, i) => panels[i].caption = noDash(t));
+    renderSlots(); toast("Panels captioned", "ok");
+  } catch (e) { if (!e || !e.code) toast("Couldn't write captions right now.", "err"); }
+  busy(btn, false);
+};
+
+/* ================= AI Scene ================= */
+const SCENE_SAMPLES = ["🛒 Knight at self-checkout|A medieval knight standing confused at a grocery self-checkout",
+  "🐱 Cat board meeting|A cat running a very serious board meeting with three dogs",
+  "🦖 T-rex making the bed|A T-rex trying very hard to make its bed",
+  "🤖 Robot on day 180|A robot teacher on the last day of school, running on 1% battery"];
+$("#sceneSamples").innerHTML = SCENE_SAMPLES.map(s => { const [l, p] = s.split("|"); return `<button class="sample" data-p="${esc(p)}">${l}</button>`; }).join("");
+$("#sceneSamples").onclick = e => { const b = e.target.closest(".sample"); if (b) $("#scenePrompt").value = b.dataset.p; };
+let sceneSpec = null;
+async function buildScene() {
+  const p = $("#scenePrompt").value.trim();
+  if (!p) { toast("Describe a scene first.", "err"); return $("#scenePrompt").focus(); }
+  if (!hasAI()) return openSettings();
+  const btn = $("#sceneBtn"); busy(btn, true, "⏳ Generating (≈15s)…");
+  try {
+    const style = $("#sceneStyle").value;
+    const capP = $("#sceneCaptions").checked
+      ? askJSON(`Write a funny two-line meme caption for this scene: "${p}". Tone: ${tone}. ${safety()} Each line under 8 words. No em dashes. Reply with ONLY JSON: {"top":"","bottom":""}`).catch(() => ({}))
+      : Promise.resolve({});
+    const [src, cap] = await Promise.all([
+      geminiImage(`Create a funny, expressive internet meme reaction image in the style of a ${style}. Scene: ${p}. Leave some empty space at the top and bottom for captions. IMPORTANT: no text, words, letters, captions, or watermarks in the image.`),
+      capP]);
+    const img = await loadImg(src);
+    sceneSpec = { title: "AI Scene", base: { kind: "image", src, img },
+      layers: [Z("Top text", .5, .09, .92, 42, CLASSIC, { text: noDash(cap.top || "") }), Z("Bottom text", .5, .91, .92, 42, CLASSIC, { text: noDash(cap.bottom || "") })], topBar: false };
+    renderMeme($("#sceneCanvas"), sceneSpec.base, sceneSpec.layers);
+    $("#sceneCard").classList.remove("hidden");
+    $("#sceneCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (e) { if (!e || !e.code) toast("Gemini couldn't make that image. Try rewording, or check that your key has image access.", "err"); }
+  busy(btn, false);
+}
+$("#sceneBtn").onclick = buildScene;
+$("#sceneAgain").onclick = buildScene;
+$("#sceneEdit").onclick = () => sceneSpec && openEditor(cloneSpec(sceneSpec));
+$("#sceneCopy").onclick = () => sceneSpec && copyCanvas(exportCanvas(sceneSpec));
+$("#sceneSave").onclick = () => sceneSpec && saveCanvas(exportCanvas(sceneSpec), "ai-scene");
+$("#sceneVault").onclick = () => sceneSpec && addToVault(sceneSpec);
+
+/* ================= Editor ================= */
+const ED = { spec: null, sel: -1, info: null, drag: null };
+const edCanvas = $("#edCanvas"), layersEl = $("#layers");
+function openEditor(spec) {
+  ED.spec = spec;
+  ED.sel = spec.layers.length ? (spec.topBar && spec.layers.length > 1 ? 1 : 0) : -1;
+  $("#edTitle").textContent = spec.title;
+  syncMode(); renderLayersUI(); redraw(); openOverlay("#editor");
+}
+function redraw() { ED.info = renderMeme(edCanvas, ED.spec.base, ED.spec.layers, ED.spec.topBar, ED.sel); }
+function syncMode() { $("#modeOverlay").classList.toggle("on", !ED.spec.topBar); $("#modeBar").classList.toggle("on", !!ED.spec.topBar); }
+function setMode(bar) {
+  ED.spec.topBar = bar;
+  if (bar && !ED.spec.layers.length) ED.spec.layers.push(Z("Text 1", .5, .1, .9, 44, CLASSIC, { text: "When you…" }));
+  syncMode(); renderLayersUI(); redraw();
+}
+$("#modeOverlay").onclick = () => setMode(false);
+$("#modeBar").onclick = () => setMode(true);
+$("#edClose").onclick = () => closeOverlay("#editor");
+function renderLayersUI() {
+  layersEl.innerHTML = "";
+  if (!ED.spec.layers.length) { layersEl.innerHTML = `<p class="sub">No text yet. Tap "+ Add text".</p>`; return; }
+  ED.spec.layers.forEach((l, i) => {
+    const isBar = ED.spec.topBar && i === 0, d = document.createElement("div");
+    d.className = "layer" + (i === ED.sel ? " sel" : ""); d.dataset.i = i;
+    d.innerHTML = `<div class="layer-head"><span class="layer-name">${esc(isBar ? "Top bar caption" : l.label || "Text " + (i + 1))}</span>
+      <div class="layer-tools"><button class="btn tiny yellow" data-a="punch">✨ Punch up</button>
+      <button class="icon-btn" data-a="dup" title="Duplicate">⧉</button><button class="icon-btn" data-a="del" title="Delete">🗑</button></div></div>
+      <textarea rows="2" data-a="text" placeholder="Type a caption…">${esc(l.text)}</textarea>
+      <div class="punch hidden"></div>
+      <div class="layer-row${isBar ? " hidden" : ""}">
+        <label class="mini">Size<input type="range" min="14" max="110" value="${l.size}" data-a="size"></label>
+        <select data-a="font" title="Font"><option value="impact">Impact</option><option value="comic">Comic</option><option value="clean">Clean</option></select>
+        <input type="color" value="${esc(l.color)}" data-a="color" title="Text color">
+        <button class="tgl${l.stroke ? " on" : ""}" data-a="stroke">Outline</button>
+        <button class="tgl${l.upper ? " on" : ""}" data-a="upper" title="All caps">AA</button>
+      </div>`;
+    $("select", d).value = l.font;
+    layersEl.appendChild(d);
+  });
+}
+function selectLayer(i) {
+  if (ED.sel === i) return;
+  ED.sel = i; $$(".layer", layersEl).forEach(el => el.classList.toggle("sel", +el.dataset.i === i)); redraw();
+}
+layersEl.addEventListener("focusin", e => { const card = e.target.closest(".layer"); if (card) selectLayer(+card.dataset.i); });
+layersEl.addEventListener("input", e => {
+  const card = e.target.closest(".layer"); if (!card) return;
+  const l = ED.spec.layers[+card.dataset.i], a = e.target.dataset.a;
+  if (a === "text") l.text = e.target.value;
+  if (a === "size") l.size = +e.target.value;
+  if (a === "color") l.color = e.target.value;
+  redraw();
+});
+layersEl.addEventListener("change", e => {
+  const card = e.target.closest(".layer"); if (!card || e.target.dataset.a !== "font") return;
+  ED.spec.layers[+card.dataset.i].font = e.target.value; redraw();
+});
+layersEl.addEventListener("click", e => {
+  const card = e.target.closest(".layer"); if (!card) return;
+  const i = +card.dataset.i, l = ED.spec.layers[i], btn = e.target.closest("button[data-a]");
+  selectLayer(i); if (!btn) return;
+  const a = btn.dataset.a;
+  if (a === "stroke" || a === "upper") { l[a] = !l[a]; btn.classList.toggle("on", l[a]); redraw(); }
+  if (a === "dup") { ED.spec.layers.splice(i + 1, 0, { ...l, label: (l.label || "Text") + " copy", y: clamp(l.y + .08, .03, .97) }); ED.sel = i + 1; renderLayersUI(); redraw(); }
+  if (a === "del") { ED.spec.layers.splice(i, 1); ED.sel = Math.min(ED.sel, ED.spec.layers.length - 1); renderLayersUI(); redraw(); }
+  if (a === "punch") punchUp(i, card, btn);
+  if (a === "apply") { l.text = btn.dataset.text; $("textarea", card).value = l.text; $(".punch", card).classList.add("hidden"); redraw(); toast("Punch-up applied", "ok"); }
+});
+async function punchUp(i, card, btn) {
+  const l = ED.spec.layers[i];
+  if (!l.text.trim()) return toast("Type a caption first, then punch it up.", "err");
+  if (!hasAI()) return openSettings();
+  busy(btn, true, "⏳");
+  try {
+    const others = ED.spec.layers.map((x, j) => j === i ? null : `${x.label}: "${x.text}"`).filter(Boolean).join("; ");
+    const out = await askJSON(`Rewrite this meme caption 3 funnier ways.
+Meme template: "${ED.spec.title}". This box: "${l.label}". Current text: "${l.text}".
+${others ? `Other boxes, for context: ${others}` : ""}
+Give: 1) Shorter & snappier, 2) Dry deadpan, 3) Dramatic / unhinged. Each under 12 words. No em dashes. ${safety()}
+Reply with ONLY JSON: {"options":[{"style":"","text":""}]}`);
+    const opts = (out.options || []).filter(o => o && o.text).slice(0, 3);
+    if (!opts.length) throw new Error("none");
+    const box = $(".punch", card);
+    box.innerHTML = opts.map(o => `<button data-a="apply" data-text="${esc(noDash(o.text))}"><small>${esc(o.style || "Option")}</small>${esc(noDash(o.text))}</button>`).join("");
+    box.classList.remove("hidden");
+  } catch (e) { if (!e || !e.code) toast("Couldn't punch that up right now.", "err"); }
+  busy(btn, false);
+}
+$("#addLayer").onclick = () => {
+  const n = ED.spec.layers.length;
+  ED.spec.layers.push(Z(`Text ${n + 1}`, .5, .5, .85, 44, CLASSIC, { text: "NEW TEXT" }));
+  ED.sel = n; renderLayersUI(); redraw();
+  const ta = $$(".layer textarea", layersEl)[n]; if (ta) { ta.focus(); ta.select(); }
+};
+$("#edCopy").onclick = () => copyCanvas(exportCanvas(ED.spec));
+$("#edSave").onclick = () => saveCanvas(exportCanvas(ED.spec), ED.spec.title);
+$("#edVault").onclick = () => addToVault(ED.spec);
+function toPt(e) { const r = edCanvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * edCanvas.width / r.width, y: (e.clientY - r.top) * edCanvas.height / r.height }; }
+edCanvas.addEventListener("pointerdown", e => {
+  if (!ED.info) return;
+  const p = toPt(e), b = ED.info.boxes; let hit = -1;
+  for (let i = b.length - 1; i >= 0; i--) { const q = b[i]; if (q && !q.fixed && p.x >= q.x && p.x <= q.x + q.w && p.y >= q.y && p.y <= q.y + q.h) { hit = i; break; } }
+  if (hit < 0) return;
+  const l = ED.spec.layers[hit];
+  ED.drag = { id: e.pointerId, dx: l.x * ED.info.W - p.x, dy: ED.info.barH + l.y * ED.info.H - p.y };
+  edCanvas.setPointerCapture(e.pointerId); edCanvas.classList.add("dragging");
+  if (ED.sel !== hit) { ED.sel = hit; $$(".layer", layersEl).forEach(el => el.classList.toggle("sel", +el.dataset.i === hit)); $$(".layer", layersEl)[hit]?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  redraw(); e.preventDefault();
+});
+edCanvas.addEventListener("pointermove", e => {
+  if (!ED.drag || e.pointerId !== ED.drag.id) return;
+  const p = toPt(e), l = ED.spec.layers[ED.sel];
+  l.x = clamp((p.x + ED.drag.dx) / ED.info.W, .03, .97);
+  l.y = clamp((p.y + ED.drag.dy - ED.info.barH) / ED.info.H, .02, .98);
+  redraw();
+});
+const endDrag = () => { ED.drag = null; edCanvas.classList.remove("dragging"); };
+edCanvas.addEventListener("pointerup", endDrag);
+edCanvas.addEventListener("pointercancel", endDrag);
+
+/* ================= Tabs & boot ================= */
+const TABS = ["generate", "templates", "photo", "panels", "scene", "vault"];
+function showTab(t, push = true) {
+  if (!TABS.includes(t)) t = "generate";
+  TABS.forEach(x => $("#view-" + x).classList.toggle("hidden", x !== t));
+  $$(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
+  if (t === "vault") renderVault();
+  if (push) { try { history.replaceState(null, "", "#" + t); } catch (e) {} }
+}
+$("#tabs").onclick = e => { const b = e.target.closest(".tab"); if (b) showTab(b.dataset.tab); };
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1), false));
+(async () => {
+  syncAiChip(); renderCats(); renderTemplates(); renderSlots(); updateVaultCount();
+  showTab(location.hash.slice(1) || "generate", false);
+  try { await Promise.race([Promise.all(["40px Anton", "40px Bangers", "800 40px Inter"].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
+  await renderResults([
+    { t: tplById("101470"), captions: ["My code works on the first try", "Aliens"] },
+    { t: tplById("55311130"), captions: ["47 open browser tabs and 2% battery", "This is fine"] },
+    { t: tplById("181913649"), captions: ["Going to sleep at a reasonable hour", "Making memes at 1:30 AM"] },
+    { t: tplById("129242436"), captions: ["Homemade memes are funnier than corporate ones"] }]);
+  loadMoreTemplates();
+})();
+</script>
+</body>
+</html>

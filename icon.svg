@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="3.2" fill="#14110f" opacity=".13"/>
+      <circle cx="16" cy="16" r="3.2" fill="#14110f" opacity=".13"/>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" fill="#ff5c8a"/>
+  <rect width="512" height="512" fill="url(#dots)"/>
+  <!-- burst -->
+  <g transform="translate(256 262)" fill="#ffd23f" opacity=".35">
+    <path d="M0-230 L28-60 L160-165 L70-25 L230 0 L70 25 L160 165 L28 60 L0 230 L-28 60 L-160 165 L-70 25 L-230 0 L-70-25 L-160-165 L-28-60Z"/>
+  </g>
+  <!-- face shadow -->
+  <circle cx="270" cy="282" r="150" fill="#14110f"/>
+  <!-- face -->
+  <circle cx="256" cy="266" r="150" fill="#ffd23f" stroke="#14110f" stroke-width="14"/>
+  <!-- sunglasses -->
+  <path d="M120 220 H392" stroke="#14110f" stroke-width="16" stroke-linecap="round"/>
+  <path d="M132 214 h104 v22 a48 48 0 0 1 -48 48 h-8 a48 48 0 0 1 -48 -48z" fill="#14110f"/>
+  <path d="M276 214 h104 v22 a48 48 0 0 1 -48 48 h-8 a48 48 0 0 1 -48 -48z" fill="#14110f"/>
+  <path d="M152 232 l26 -10 M296 232 l26 -10" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".85"/>
+  <!-- grin -->
+  <path d="M176 318 Q256 382 336 318" fill="none" stroke="#14110f" stroke-width="16" stroke-linecap="round"/>
+  <path d="M330 300 l18 -6" stroke="#14110f" stroke-width="12" stroke-linecap="round"/>
+</svg>
