@@ -1169,16 +1169,51 @@ const SAMPLES = [["💻 Coding bug", "When you fix one bug in production and thr
   ["😴 Late night", "Me telling myself I'll go to bed early, at 1:45 AM"],
   ["📚 Teacher life", "When you finally sit down and three kids need a tissue at the same time"]];
 const SURPRISE = {
-  "All": "Closing 38 browser tabs after solving a 5-minute problem in 3 hours",
-  "School & Classroom": "When the bell rings in 30 seconds and someone raises their hand to ask about homework",
-  "Gaming & Tech": "The tutorial boss takes 3 tries, the final boss takes 1, and a random staircase ends the run",
-  "Aliens & Sci-Fi": "When the Wi-Fi drops at 2 AM and my brain immediately blames alien interference",
-  "Animals & Pets": "My dog acting like he's never been fed, 4 minutes after dinner",
-  "Movies & TV": "Rewatching a movie 10 years later and realizing the villain had a point",
-  "The Simpsons": "When the teacher asks who finished the reading and I slowly back away like Homer into the hedge",
-  "The Simpsons & Cartoons": "Slowly backing into the bushes when someone asks who will organize the group project",
-  "Politics & Debates": "Two people arguing for an hour, then realizing they agree"
+  "All": ["Closing 38 browser tabs after solving a 5-minute problem in 3 hours", "Saying 'I'll just check one thing' and looking up 90 minutes later",
+    "Rehearsing a phone call in my head, then the person doesn't pick up", "The wifi password being 24 random characters with no spaces",
+    "Buying a planner in January and finding it untouched in June", "When the microwave beeps and you still have 1 second left to stop it",
+    "Group chat goes silent the second you send a message", "Walking into a room and instantly forgetting why"],
+  "School & Classroom": ["When the bell rings in 30 seconds and someone raises their hand to ask about homework", "Indoor recess, day four, and the LEGO bin has formed a government",
+    "When a student says 'I'm done' 45 seconds after you passed out the worksheet", "The copier jams five minutes before the first bell",
+    "Telling the class 'one more question' and 14 hands go up", "When a kid tells you a 10-minute story that ends with 'and then I woke up'",
+    "Picture day, and it's also the day everyone eats spaghetti", "When the fire drill happens during the only quiet work time all week"],
+  "Gaming & Tech": ["The tutorial boss takes 3 tries, the final boss takes 1, and a random staircase ends the run", "Restarting the router as the solution to every problem",
+    "The game update is 40 GB and I just wanted to play for 10 minutes", "Saying 'one more round' at 11 PM and seeing sunrise",
+    "Fixing a bug by adding a comment and not changing any code", "When the save point is right after the cutscene you can't skip",
+    "Printer works perfectly until someone important is watching", "Turning it off and on again actually worked and now I'm suspicious"],
+  "Aliens & Sci-Fi": ["When the Wi-Fi drops at 2 AM and my brain immediately blames alien interference", "Aliens visit Earth and the first thing they see is a group chat argument",
+    "The spaceship has warp drive but the coffee machine is still broken", "An alien trying to understand why humans have a junk drawer",
+    "Robots taking over, but they still can't find the printer driver", "Time travelers warning us about the wrong things",
+    "Explaining daylight saving time to an alien", "The crew sees a mysterious signal and it's just someone's microwave"],
+  "Animals & Pets": ["My dog acting like he's never been fed, 4 minutes after dinner", "The cat knocking one thing off the counter while maintaining eye contact",
+    "The dog hearing the cheese drawer open from three rooms away", "Buying a $40 pet bed and the cat chooses the box it came in",
+    "A squirrel planning its heist on the bird feeder", "The dog acting like I've been gone for years after a 5-minute errand",
+    "The cat sitting directly on the one thing I'm working on", "Geese defending a parking lot like it's their kingdom"],
+  "Movies & TV": ["Rewatching a movie 10 years later and realizing the villain had a point", "Scrolling streaming apps for 45 minutes, then rewatching the same show",
+    "When the trailer shows the whole movie", "Characters in horror movies splitting up to look around",
+    "The sequel nobody asked for", "Watching a show 'just to fall asleep' and staying up for the whole season",
+    "When the main character makes the obviously worst choice", "Skipping the intro is the best button ever invented"],
+  "The Simpsons": ["When the teacher asks who finished the reading and I slowly back away like Homer into the hedge", "Me telling myself the snack drawer is for emergencies, and everything is an emergency",
+    "When the principal says the new policy is fine and it's everyone else who's wrong", "Being asked to say my catchphrase at every family gathering",
+    "Writing 'I will not' lines in my head after every bad decision", "When the donut box is empty but you check it three more times",
+    "Getting extremely excited about something only I care about", "Yelling at the cloud of new apps I have to learn this year"],
+  "The Simpsons & Cartoons": ["Slowly backing into the bushes when someone asks who will organize the group project", "The cartoon physics of running off a cliff on a Monday",
+    "When your plan is going great until step three", "Pretending to understand the assignment like a cartoon sidekick",
+    "Leaving the room the moment someone says 'quick question'", "When the villain has a better plan than the hero",
+    "Everything is fine, the room is just slightly on fire", "Trying to explain something simple and making it way more complicated"],
+  "Politics & Debates": ["Two people arguing for an hour, then realizing they agree", "Debating pineapple on pizza like it's a national issue",
+    "The meeting about planning the meeting", "Committee forms to decide on the color of the new committee folder",
+    "Everyone agreeing in the meeting, then complaining in the parking lot", "Proposing a simple solution and getting sent to a subcommittee",
+    "When the 'quick vote' becomes a 40-minute discussion", "Campaigning for class president with a promise of longer recess"]
 };
+const recentSurprises = [];
+function pickSurprise(th) {
+  const pool = SURPRISE[th] || [`Something hilariously relatable in the world of ${th}`, `An everyday frustration, but set in ${th}`, `The most awkward moment possible in ${th}`, `A tiny victory that feels huge in ${th}`];
+  const fresh = pool.filter(x => !recentSurprises.includes(x));
+  const pick = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))];
+  recentSurprises.push(pick); if (recentSurprises.length > 6) recentSurprises.shift();
+  return pick;
+}
 let theme = "All", tone = "Relatable";
 $("#samples").innerHTML = SAMPLES.map(([l, p]) => `<button class="sample" data-p="${esc(p)}">${l}</button>`).join("");
 $("#samples").onclick = e => { const b = e.target.closest(".sample"); if (b) { $("#prompt").value = b.dataset.p; $("#prompt").focus(); } };
@@ -1192,7 +1227,10 @@ $("#themeChips").onclick = e => {
 $("#toneChips").innerHTML = TONES.map(t => `<button class="pill tone${t === tone ? " on" : ""}" data-v="${esc(t)}">${t}</button>`).join("");
 $("#toneChips").onclick = e => { const b = e.target.closest(".pill"); if (!b) return; tone = b.dataset.v; $$(".pill", $("#toneChips")).forEach(x => x.classList.toggle("on", x === b)); };
 const themeLabel = () => theme === "Custom" ? ($("#customTheme").value.trim() || "Pop culture") : theme;
-$("#surpriseBtn").onclick = () => { const t = themeLabel(); $("#prompt").value = SURPRISE[t] || `Something hilariously relatable in the world of ${t}`; generate(); };
+$("#surpriseBtn").onclick = () => {
+  if (hasAI()) { $("#prompt").value = ""; $("#prompt").placeholder = "🎲 Inventing a surprise…"; generate({ surprise: true }); }
+  else { $("#prompt").value = pickSurprise(themeLabel()); generate(); }
+};
 $("#prompt").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); });
 $("#generateBtn").onclick = () => generate();
 
@@ -1204,11 +1242,11 @@ function templatePool(th) {
   const seen = new Set();
   return pool.filter(t => !seen.has(t.id) && seen.add(t.id)).slice(0, 60);
 }
-function genPrompt(situation, th, pool) {
+function genPrompt(situation, th, pool, surprise = false) {
   const cat = pool.map(t => `- id "${t.id}" | ${t.name} | ${t.vibe} | ${t.zones.length} box${t.zones.length > 1 ? "es" : ""}: [${t.zones.map(z => z.label).join(" | ")}]`).join("\n");
   return `You are an expert internet meme writer who knows exactly how each classic meme template is used. Make 4 memes about the situation below, each with a DIFFERENT template from the catalog. Choose templates whose real-world usage fits the joke.
 
-SITUATION: "${situation}"
+${surprise ? `SITUATION: Invent ONE fresh, specific, funny, relatable situation that fits the theme below (one sentence, under 20 words). Make it different from these recent ones: ${JSON.stringify(recentSurprises.slice(-6))}. Return it in "situation".` : `SITUATION: "${situation}"`}
 THEME / UNIVERSE: ${th === "All" ? "A versatile mix of classic formats." : `${th}. Prefer templates tagged for it and work in its tropes and references.`}
 TONE: ${tone}
 ${safety()}
@@ -1218,7 +1256,7 @@ ${cat}
 
 RULES: Each box under 12 words. Land the punchline in the last box. Be specific and surprising. No em dashes. No hashtags.
 
-Reply with ONLY JSON: {"memes":[{"templateId":"...","captions":["..."]}]}`;
+Reply with ONLY JSON: {${surprise ? '"situation":"...",' : ""}"memes":[{"templateId":"...","captions":["..."]}]}`;
 }
 function validMemes(arr) {
   if (!Array.isArray(arr)) return null;
@@ -1241,10 +1279,10 @@ async function renderResults(list) {
   const specs = await Promise.all(list.map(m => specFromTemplate(m.t, m.captions)));
   g.innerHTML = ""; specs.forEach(s => g.appendChild(memeCard(s)));
 }
-async function generate() {
+async function generate({ surprise = false } = {}) {
   let p = $("#prompt").value.trim();
   const th = themeLabel();
-  if (!p) {
+  if (!p && !surprise) {
     if (th !== "All") p = `Something hilariously relatable in the world of ${th}`;
     else { toast("Type a situation first, or tap Surprise me.", "err"); $("#prompt").focus(); return; }
   }
@@ -1253,8 +1291,11 @@ async function generate() {
   $("#resultsTitle").textContent = "Matching templates & writing punchlines…";
   let memes = null;
   let aiErr = null;
-  if (hasAI()) { try { memes = validMemes((await askJSON(genPrompt(p, th, templatePool(th)))).memes); if (!memes) aiErr = { message: "Gemini picked templates that don't exist." }; } catch (e) { aiErr = e; } }
+  if (hasAI()) { try { const out = await askJSON(genPrompt(p, th, templatePool(th), surprise)); memes = validMemes(out.memes);
+    if (surprise) { p = noDash(out.situation || "").slice(0, 200) || pickSurprise(th); if (out.situation) { recentSurprises.push(p); if (recentSurprises.length > 6) recentSurprises.shift(); } $("#prompt").value = p; } if (!memes) aiErr = { message: "Gemini picked templates that don't exist." }; } catch (e) { aiErr = e; } }
   const usedAI = !!memes;
+  if (surprise && !$("#prompt").value.trim()) { p = pickSurprise(th); $("#prompt").value = p; }
+  $("#prompt").placeholder = "e.g. Day four of indoor recess and the LEGO bin has formed a government";
   if (!memes) memes = fallbackMemes(p, th);
   await renderResults(memes);
   $("#resultsTitle").textContent = usedAI ? `Fresh memes · ${th === "All" ? tone : th + " · " + tone}` : "Quick memes (instant mode)";
