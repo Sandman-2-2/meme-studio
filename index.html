@@ -455,7 +455,7 @@ function loadImg(src, label = "") {
     const i = new Image();
     if (/^https?:/.test(src)) i.crossOrigin = "anonymous";
     i.onload = () => res(i);
-    i.onerror = () => { imgCache.delete(src); res(fallbackImage(label)); };
+    i.onerror = () => { imgCache.delete(src); if (typeof markBroken === "function") markBroken(src); res(fallbackImage(label)); };
     i.src = src;
   });
   imgCache.set(src, p); return p;
@@ -557,36 +557,183 @@ const CURATED = [
     vibe: "Choosing to suffer a massive penalty rather than do one simple reasonable thing",
     zones: zs([["Card text (left)", .3, .45, .34, 24, "dark"], ["Holding 25 cards", .74, .85, .38, 28]]) }
 ];
-let TEMPLATES = CURATED.map(t => ({ ...t, curated: true }));
+// More hand-mapped classics. IDs/URLs are re-confirmed at runtime against imgflip's live list (see loadMoreTemplates).
+const MORE = [
+  ["124822590", "Left Exit 12 Off Ramp", "https://i.imgflip.com/22bdq6.jpg", ["Gaming & Tech", "School & Classroom", "Movies & TV"],
+    "Swerving the car toward a tempting (usually worse) exit instead of continuing straight on the sensible road",
+    [["Straight ahead (sensible)", .37, .17, .24, 22], ["Exit ramp (tempting)", .62, .17, .2, 22], ["The car (you)", .6, .8, .32, 28]]],
+  ["97984", "Disaster Girl", "https://i.imgflip.com/23ls.jpg", ["Movies & TV", "School & Classroom"],
+    "A girl smirking at the camera while a house burns behind her, implying she caused the chaos",
+    [["Top caption", .5, .12, .9, 34], ["Bottom caption", .5, .88, .9, 34]]],
+  ["438680", "Batman Slapping Robin", "https://i.imgflip.com/9ehk.jpg", ["Movies & TV", "The Simpsons & Cartoons", "School & Classroom"],
+    "Robin starts saying something dumb and Batman slaps him mid-sentence with the correction",
+    [["Robin (gets cut off)", .27, .1, .44, 22, "dark"], ["Batman (the slap)", .74, .1, .44, 22, "dark"]]],
+  ["61544", "Success Kid", "https://i.imgflip.com/1bhk.jpg", ["School & Classroom", "Animals & Pets"],
+    "A toddler fist-pumping over a small, satisfying victory",
+    [["Top caption", .5, .12, .9, 36], ["Bottom (the win)", .5, .88, .9, 36]]],
+  ["4087833", "Waiting Skeleton", "https://i.imgflip.com/2fm6x.jpg", ["School & Classroom", "Gaming & Tech"],
+    "A skeleton on a bench that has been waiting forever for something that never happens",
+    [["Top caption", .5, .12, .9, 34], ["Bottom caption", .5, .88, .9, 34]]],
+  ["80707627", "Sad Pablo Escobar", "https://i.imgflip.com/1c1uej.jpg", ["Movies & TV", "School & Classroom"],
+    "Three panels of a man waiting alone and bored, used for loneliness or waiting on something that never comes",
+    [["Panel 1", .25, .44, .45, 26], ["Panel 2", .75, .44, .45, 26], ["Panel 3 (bottom)", .5, .93, .9, 28]]],
+  ["89370399", "Roll Safe Think About It", "https://i.imgflip.com/1h7in3.jpg", ["School & Classroom", "Gaming & Tech"],
+    "A man tapping his temple while giving terrible advice with flawless-sounding logic",
+    [["Top caption", .5, .12, .9, 34], ["Bottom (the 'genius' logic)", .5, .88, .9, 34]]],
+  ["135256802", "Epic Handshake", "https://i.imgflip.com/28j0te.jpg", ["Gaming & Tech", "School & Classroom", "Movies & TV"],
+    "Two very different groups clasping hands over the one thing they unexpectedly agree on",
+    [["Left arm (group 1)", .2, .62, .34, 28], ["Right arm (group 2)", .82, .62, .32, 28], ["Handshake (what they share)", .5, .3, .36, 28]]],
+  ["110163934", "I Bet He's Thinking About Other Women", "https://i.imgflip.com/1tl71a.jpg", ["School & Classroom", "Gaming & Tech"],
+    "She suspects something dramatic; he is actually obsessing over something absurdly unrelated",
+    [["Her worried thought", .27, .14, .5, 24], ["What he's actually thinking", .75, .72, .46, 24]]],
+  ["100777631", "Is This A Pigeon", "https://i.imgflip.com/1o00in.jpg", ["The Simpsons & Cartoons", "School & Classroom", "Gaming & Tech"],
+    "A clueless person confidently mislabeling something obvious",
+    [["The person", .28, .22, .44, 28], ["The thing (butterfly)", .78, .2, .36, 28], ["Is this a ___?", .5, .88, .9, 32]]],
+  ["155067746", "Surprised Pikachu", "https://i.imgflip.com/2kbn1e.jpg", ["The Simpsons & Cartoons", "Gaming & Tech", "School & Classroom"],
+    "Doing something with an obvious consequence, then acting shocked when it happens",
+    [["What you did", .5, .1, .92, 30], ["The obvious result", .5, .9, .92, 30]]],
+  ["119139145", "Blank Nut Button", "https://i.imgflip.com/1yxkcp.jpg", ["Gaming & Tech", "School & Classroom"],
+    "Smashing a button the instant a specific thing happens, out of uncontrollable enthusiasm",
+    [["Situation (top)", .5, .1, .92, 30], ["The button", .3, .55, .34, 28]]],
+  ["27813981", "Hide the Pain Harold", "https://i.imgflip.com/gk5el.jpg", ["School & Classroom", "Gaming & Tech"],
+    "Smiling politely while dying inside",
+    [["Top caption", .5, .12, .9, 34], ["Bottom caption", .5, .88, .9, 34]]],
+  ["61520", "Futurama Fry", "https://i.imgflip.com/1bgw.jpg", ["The Simpsons & Cartoons", "School & Classroom", "Aliens & Sci-Fi"],
+    "Squinting suspicion: 'Not sure if X... or just Y'",
+    [["Not sure if…", .5, .12, .9, 34], ["…or just", .5, .88, .9, 34]]],
+  ["216951317", "Guy Holding Cardboard Sign", "https://i.imgflip.com/3l60ph.jpg", ["Politics & Debates", "School & Classroom"],
+    "A man in public holding a handwritten sign with a blunt, relatable or absurd message",
+    [["Sign text", .5, .64, .48, 26, "dark"]]],
+  ["79132341", "Bike Fall", "https://i.imgflip.com/1b42wl.jpg", ["Gaming & Tech", "School & Classroom", "Politics & Debates"],
+    "Someone sabotages themselves (stick in their own bike wheel), crashes, then blames something else",
+    [["Panel 1 (the self-sabotage)", .5, .14, .9, 26], ["Panel 2 (the crash)", .5, .5, .9, 26], ["Panel 3 (blaming something else)", .5, .86, .9, 26]]],
+  ["226297822", "Panik Kalm Panik", "https://i.imgflip.com/3qqcim.png", ["School & Classroom", "Gaming & Tech", "Animals & Pets"],
+    "A scary situation (panic), a relief (calm), then a twist that makes it worse (panic again)",
+    [["Panik", .25, .17, .48, 24, "dark"], ["Kalm", .25, .5, .48, 24, "dark"], ["Panik again", .25, .83, .48, 24, "dark"]]],
+  ["180190441", "They're The Same Picture", "https://i.imgflip.com/2za3u1.jpg", ["The Simpsons & Cartoons", "Movies & TV", "School & Classroom"],
+    "Corporate wants you to find the difference between two things that are actually identical",
+    [["Picture 1", .27, .24, .36, 22, "dark"], ["Picture 2", .73, .24, .36, 22, "dark"], ["Bottom (optional)", .5, .9, .9, 28]]],
+  ["5496396", "Leonardo Dicaprio Cheers", "https://i.imgflip.com/39t1o.jpg", ["Movies & TV", "School & Classroom"],
+    "Raising a glass to toast someone or something",
+    [["Top caption", .5, .12, .9, 34], ["Bottom caption", .5, .88, .9, 34]]],
+  ["21735", "The Rock Driving", "https://i.imgflip.com/grr.jpg", ["Movies & TV", "School & Classroom"],
+    "An innocent question gets an alarming answer, and the driver turns in shock",
+    [["The question", .3, .2, .5, 26], ["The alarming answer", .7, .6, .5, 26]]],
+  ["61532", "The Most Interesting Man In The World", "https://i.imgflip.com/1bh8.jpg", ["Movies & TV", "School & Classroom"],
+    "'I don't always X, but when I do, I Y'",
+    [["I don't always…", .5, .12, .9, 34], ["…but when I do", .5, .88, .9, 34]]],
+  ["61585", "Bad Luck Brian", "https://i.imgflip.com/1bip.jpg", ["School & Classroom"],
+    "Setup of something good, punchline of terrible luck",
+    [["Setup", .5, .12, .9, 36], ["Bad luck", .5, .88, .9, 36]]],
+  ["14371066", "Star Wars Yoda", "https://i.imgflip.com/8k0sa.jpg", ["Aliens & Sci-Fi", "Movies & TV", "School & Classroom"],
+    "Wise advice in backwards Yoda grammar",
+    [["Top caption", .5, .12, .9, 34], ["Bottom caption", .5, .88, .9, 34]]],
+  ["284929871", "They don't know", "https://i.imgflip.com/4pn1an.png", ["School & Classroom", "Gaming & Tech"],
+    "Standing alone at a party secretly proud of something nobody else knows about",
+    [["They don't know…", .33, .16, .5, 24, "dark"]]],
+  ["370867422", "Megamind peeking", "https://i.imgflip.com/64sz4u.png", ["The Simpsons & Cartoons", "Movies & TV", "School & Classroom"],
+    "'No X?' Peeking in disbelief that something is missing",
+    [["Top caption", .5, .1, .92, 40], ["Bottom caption", .5, .9, .92, 34]]],
+  ["309868304", "Trade Offer", "https://i.imgflip.com/54hjww.jpg", ["Gaming & Tech", "Politics & Debates", "School & Classroom"],
+    "A confident trade offer: what I receive vs what you receive (usually wildly unfair)",
+    [["I receive", .27, .3, .36, 26], ["You receive", .73, .3, .36, 26]]],
+  ["322841258", "Anakin Padme 4 Panel", "https://i.imgflip.com/5c7lwq.png", ["Movies & TV", "Aliens & Sci-Fi", "School & Classroom"],
+    "He states a plan; she hopefully assumes the good version; he stays silent; she nervously repeats it",
+    [["Anakin (the plan)", .25, .43, .45, 24], ["Padme (hopeful assumption)", .75, .43, .45, 24], ["Padme again (…right?)", .75, .93, .45, 24]]],
+  ["342785297", "Gus Fring we are not the same", "https://i.imgflip.com/5o32tt.png", ["Movies & TV", "Gaming & Tech", "School & Classroom"],
+    "'You do X. I do Y. We are not the same.' Absurd superiority over a tiny difference",
+    [["You…", .5, .08, .92, 28], ["I…", .5, .2, .92, 28], ["We are not the same", .5, .9, .92, 30]]],
+  ["195515965", "Clown Applying Makeup", "https://i.imgflip.com/38el31.jpg", ["School & Classroom", "Gaming & Tech", "Politics & Debates"],
+    "Four steps of someone making a worse and worse decision, becoming a full clown",
+    [["Step 1", .28, .125, .52, 22], ["Step 2", .28, .375, .52, 22], ["Step 3", .28, .625, .52, 22], ["Step 4 (full clown)", .28, .875, .52, 22]]],
+  ["123999232", "The Scroll Of Truth", "https://i.imgflip.com/21tqf4.jpg", ["School & Classroom", "Movies & TV"],
+    "Someone finds a scroll, reads an uncomfortable truth, and angrily throws it away",
+    [["The truth on the scroll", .27, .73, .26, 20, "dark"]]],
+  ["252758727", "Mother Ignoring Kid Drowning In A Pool", "https://i.imgflip.com/46hhvr.jpg", ["School & Classroom", "Gaming & Tech"],
+    "Fussing over a shiny new thing while ignoring the old one that's struggling, and the long-forgotten one is a skeleton",
+    [["The parent (you)", .28, .25, .4, 26], ["The favored new thing", .7, .25, .4, 26], ["The forgotten one (skeleton)", .5, .82, .5, 26]]],
+  ["84341851", "Evil Kermit", "https://i.imgflip.com/1e7ql7.jpg", ["The Simpsons & Cartoons", "School & Classroom"],
+    "Me: the responsible thought. Me inside: the dark-side temptation",
+    [["Me", .5, .12, .9, 32], ["Me inside (temptation)", .5, .88, .9, 32]]],
+  ["405658", "Grumpy Cat", "https://i.imgflip.com/8p0a.jpg", ["Animals & Pets"],
+    "A permanently unimpressed cat flatly rejecting fun",
+    [["Top caption", .5, .12, .9, 36], ["Bottom caption", .5, .88, .9, 36]]],
+  ["563423", "That Would Be Great", "https://i.imgflip.com/c2qn.jpg", ["School & Classroom", "Movies & TV"],
+    "A passive-aggressive boss request: 'Yeah, if you could ___, that would be great'",
+    [["Yeah, if you could…", .5, .12, .9, 32], ["…that would be great", .5, .88, .9, 32]]],
+  ["61527", "Y U No", "https://i.imgflip.com/1bh3.jpg", ["School & Classroom", "Gaming & Tech"],
+    "Exasperated rage-comic demand: 'X, Y U NO Y?'",
+    [["Top caption", .5, .12, .9, 36], ["Y U NO…", .5, .88, .9, 36]]],
+  ["61539", "First World Problems", "https://i.imgflip.com/1bhf.jpg", ["School & Classroom", "Gaming & Tech"],
+    "Overdramatic despair about a tiny privileged inconvenience",
+    [["Top caption", .5, .12, .9, 36], ["Bottom caption", .5, .88, .9, 36]]],
+  ["61546", "Brace Yourselves X is Coming", "https://i.imgflip.com/1bhm.jpg", ["Movies & TV", "School & Classroom"],
+    "Solemn warning that an annoying wave of something is about to arrive",
+    [["Brace yourselves", .5, .12, .9, 36], ["___ is coming", .5, .88, .9, 36]]],
+  ["101716", "Yo Dawg Heard You", "https://i.imgflip.com/26hg.jpg", ["Gaming & Tech", "School & Classroom"],
+    "'Yo dawg, I heard you like X, so I put an X in your X'",
+    [["Yo dawg, I heard you like…", .5, .12, .9, 32], ["…so I put a", .5, .88, .9, 32]]],
+  ["61556", "Grandma Finds The Internet", "https://i.imgflip.com/1bhw.jpg", ["Gaming & Tech", "School & Classroom"],
+    "Someone hilariously misunderstanding technology",
+    [["Top caption", .5, .12, .9, 36], ["Bottom caption", .5, .88, .9, 36]]],
+  ["99683372", "Sleeping Shaq", "https://i.imgflip.com/1nck6k.jpg", ["School & Classroom", "Gaming & Tech"],
+    "Bored asleep through the important thing, then wide awake for something trivial",
+    [["Asleep for…", .5, .12, .9, 30], ["Wide awake for…", .5, .62, .9, 30]]],
+  ["29617627", "Look At Me", "https://i.imgflip.com/hmt3v.jpg", ["Movies & TV", "School & Classroom"],
+    "'Look at me. I am the captain now.' Taking control from someone",
+    [["Top caption", .5, .12, .9, 36], ["I am the ___ now", .5, .88, .9, 36]]],
+  ["259237855", "Laughing Leo", "https://i.imgflip.com/4acd7j.png", ["Movies & TV", "School & Classroom"],
+    "Pointing and laughing at something absurd or ironic",
+    [["Top caption", .5, .1, .92, 34], ["Bottom caption", .5, .9, .92, 34]]],
+  ["175540452", "Unsettled Tom", "https://i.imgflip.com/2wifvo.jpg", ["The Simpsons & Cartoons", "School & Classroom"],
+    "Deeply unsettled, uncomfortable stare at something disturbing",
+    [["Top caption", .5, .12, .9, 34], ["Bottom caption", .5, .88, .9, 34]]],
+  ["101511", "Don't You Squidward", "https://i.imgflip.com/2cp1.jpg", ["The Simpsons & Cartoons", "School & Classroom"],
+    "Squidward annoyed by an irritating person's request",
+    [["Top caption", .5, .12, .9, 34], ["Bottom caption", .5, .88, .9, 34]]]
+].map(([id, name, url, themes, vibe, z]) => ({ id, name, url, themes, vibe, zones: zs(z), curated: true }));
+
+let TEMPLATES = [...CURATED.map(t => ({ ...t, curated: true, verified: true })), ...MORE];
 const tplById = id => TEMPLATES.find(t => t.id === String(id));
 
 function layersFromTemplate(t, captions = []) { return t.zones.map((z, i) => ({ ...z, text: captions[i] != null ? String(captions[i]) : "" })); }
 async function specFromTemplate(t, captions) {
   return { title: t.name, base: { kind: "image", src: t.url, img: await loadImg(t.url, t.name) }, layers: layersFromTemplate(t, captions), topBar: false };
 }
+const normName = n => String(n || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 async function loadMoreTemplates() {
   try {
     const res = await fetch("https://api.imgflip.com/get_memes");
     const data = await res.json();
     if (!data?.success) return;
+    const api = data.data.memes, byId = new Map(api.map(m => [String(m.id), m])), byName = new Map(api.map(m => [normName(m.name), m]));
+    // Confirm hand-mapped templates against the live list (exact id + image link).
+    TEMPLATES.forEach(t => {
+      const m = byId.get(t.id) || byName.get(normName(t.name));
+      if (m) { t.id = String(m.id); t.url = m.url; t.verified = true; }
+    });
     const have = new Set(TEMPLATES.map(t => t.id));
-    const extra = data.data.memes.filter(m => !have.has(m.id)).slice(0, 40).map(m => {
+    const extra = api.filter(m => !have.has(String(m.id))).map(m => {
       const n = m.name.toLowerCase(), th = [];
       if (/alien|ufo|space|star|trek|yoda|future|astronaut/.test(n)) th.push("Aliens & Sci-Fi");
-      if (/simpson|homer|bart|spongebob|patrick|squidward|kermit|arthur|cartoon|shrek|scooby|pooh|toy story|buzz/.test(n)) th.push("The Simpsons & Cartoons");
+      if (/simpson|homer|bart|spongebob|patrick|squidward|kermit|arthur|cartoon|shrek|scooby|pooh|toy story|buzz|pikachu|tom/.test(n)) th.push("The Simpsons & Cartoons");
       if (/bernie|trump|biden|obama|president|politic|debate|senate|vote/.test(n)) th.push("Politics & Debates");
-      if (/doge|cat|dog|monkey|bear|duck|penguin|bird|goose|frog|cheems/.test(n)) th.push("Animals & Pets");
-      if (/game|gamer|minecraft|stonks|pc|code|hack|computer/.test(n)) th.push("Gaming & Tech");
-      if (/office|michael|dwight|dicaprio|leo|thanos|batman|spider|joker|matrix|movie|wolf/.test(n)) th.push("Movies & TV");
-      const boxes = Math.max(1, Math.min(4, m.box_count || 2));
+      if (/doge|cat|dog|monkey|bear|duck|penguin|bird|goose|frog|cheems|pigeon/.test(n)) th.push("Animals & Pets");
+      if (/game|gamer|minecraft|stonks|pc|code|hack|computer|button/.test(n)) th.push("Gaming & Tech");
+      if (/office|michael|dwight|dicaprio|leo|thanos|batman|spider|joker|matrix|movie|wolf|star wars|anakin/.test(n)) th.push("Movies & TV");
+      const boxes = Math.max(1, Math.min(5, m.box_count || 2));
       const zones = boxes <= 2
         ? zs(boxes === 1 ? [["Bottom text", .5, .88, .9, 36]] : [["Top text", .5, .12, .9, 36], ["Bottom text", .5, .88, .9, 36]])
         : zs(Array.from({ length: boxes }, (_, i) => [`Box ${i + 1}`, .5, (i + .5) / boxes, .9, 28]));
-      return { id: m.id, name: m.name, url: m.url, themes: th, vibe: `Classic "${m.name}" format (${boxes} text boxes)`, zones, curated: false };
+      return { id: String(m.id), name: m.name, url: m.url, themes: th, vibe: `Classic "${m.name}" meme (${boxes} text boxes)`, zones, curated: false, verified: true };
     });
     TEMPLATES = [...TEMPLATES, ...extra];
     renderTemplates(); renderSlots();
   } catch (e) {}
+}
+function markBroken(url) {
+  const t = TEMPLATES.find(x => x.url === url);
+  if (t && !t.broken) { t.broken = true; $("#tplCount").textContent = `${TEMPLATES.filter(x => !x.broken).length} templates.`; }
 }
 
 /* ================= Renderer ================= */
@@ -1003,10 +1150,12 @@ $("#prompt").addEventListener("keydown", e => { if (e.key === "Enter" && (e.meta
 $("#generateBtn").onclick = () => generate();
 
 function templatePool(th) {
-  const matched = th === "All" ? [] : TEMPLATES.filter(t => t.themes.includes(th));
-  const pool = matched.length >= 4 ? [...matched, ...CURATED.slice(0, 8)] : [...TEMPLATES];
+  const ok = TEMPLATES.filter(t => t.verified && !t.broken);
+  const mapped = ok.filter(t => t.curated), others = ok.filter(t => !t.curated);
+  const matched = th === "All" ? [] : ok.filter(t => t.themes.includes(th));
+  const pool = matched.length >= 4 ? [...matched, ...mapped] : [...mapped, ...others];
   const seen = new Set();
-  return pool.filter(t => !seen.has(t.id) && seen.add(t.id)).slice(0, 34);
+  return pool.filter(t => !seen.has(t.id) && seen.add(t.id)).slice(0, 60);
 }
 function genPrompt(situation, th, pool) {
   const cat = pool.map(t => `- id "${t.id}" | ${t.name} | ${t.vibe} | ${t.zones.length} box${t.zones.length > 1 ? "es" : ""}: [${t.zones.map(z => z.label).join(" | ")}]`).join("\n");
@@ -1077,13 +1226,14 @@ $("#catChips").onclick = e => { const b = e.target.closest(".pill"); if (!b) ret
 $("#tplSearch").oninput = () => renderTemplates();
 function renderTemplates() {
   const q = $("#tplSearch").value.trim().toLowerCase();
-  const list = TEMPLATES.filter(t => (cat === "All" || t.themes.includes(cat)) && (!q || (t.name + " " + t.vibe).toLowerCase().includes(q)));
-  $("#tplCount").textContent = `${TEMPLATES.length} templates loaded.`;
+  const list = TEMPLATES.filter(t => !t.broken && (cat === "All" || t.themes.includes(cat)) && (!q || (t.name + " " + t.vibe).toLowerCase().includes(q)));
+  $("#tplCount").textContent = `${TEMPLATES.filter(x => !x.broken).length} templates.`;
   $("#tplGrid").innerHTML = list.length ? list.map(t => `<div class="meme-card tpl-card" data-id="${esc(t.id)}">
       <img src="${esc(t.url)}" alt="${esc(t.name)}" loading="lazy">
       <div class="mc-top"><span>${esc(t.name)}</span></div>
       <div class="mc-meta">${t.zones.length} text box${t.zones.length === 1 ? "" : "es"}${t.curated ? " · mapped" : ""}</div></div>`).join("")
     : `<p class="sub">No templates match. Try clearing the search or picking All.</p>`;
+  $$("#tplGrid img").forEach(img => img.addEventListener("error", () => { markBroken(img.getAttribute("src")); img.closest(".tpl-card")?.remove(); }));
 }
 $("#tplGrid").onclick = async e => {
   const card = e.target.closest(".tpl-card"); if (!card) return;
@@ -1143,7 +1293,7 @@ function renderSlots() {
     const isTpl = TEMPLATES.some(t => t.url === p.src);
     el.className = "slot";
     el.innerHTML = `<div class="slot-head"><span>Panel ${i + 1}</span><label class="btn tiny">📁 Upload<input type="file" accept="image/*" hidden></label></div>
-      <select title="Template">${isTpl ? "" : `<option value="">Your photo</option>`}${TEMPLATES.map(t => `<option value="${esc(t.url)}"${t.url === p.src ? " selected" : ""}>${esc(t.name)}</option>`).join("")}</select>
+      <select title="Template">${isTpl ? "" : `<option value="">Your photo</option>`}${TEMPLATES.filter(t => !t.broken).map(t => `<option value="${esc(t.url)}"${t.url === p.src ? " selected" : ""}>${esc(t.name)}</option>`).join("")}</select>
       <div class="slot-prev" style="background-image:url('${p.src}')"></div>
       <input type="text" value="${esc(p.caption)}" placeholder="Panel ${i + 1} caption">`;
     $("select", el).onchange = e => { if (e.target.value) { p.src = e.target.value; renderSlots(); } };
