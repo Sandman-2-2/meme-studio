@@ -851,56 +851,58 @@ function layersFromTemplate(t, captions = []) { return t.zones.map((z, i) => ({ 
 /* Trim blank white banners from the top/bottom of templates so captions sit on the picture. */
 const BAND_CACHE = new Map(), CROP_CACHE = new Map();
 function detectBands(img) {
+  const none = { top: 0, bottom: 0, left: 0, right: 0 };
   try {
-    const w = 96, h = Math.max(24, Math.round(w * ih(img) / iw(img)));
+    const w = 120, h = Math.max(24, Math.round(w * ih(img) / iw(img)));
     const c = document.createElement("canvas"); c.width = w; c.height = h;
     const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
     const d = x.getImageData(0, 0, w, h).data;
-    const blankRow = y => {
-      let ok = 0;
-      for (let i = 0; i < w; i++) {
-        const o = (y * w + i) * 4, r = d[o], g = d[o + 1], b = d[o + 2];
-        if (Math.min(r, g, b) > 232 && Math.max(r, g, b) - Math.min(r, g, b) < 20) ok++;
-      }
-      return ok / w > .97;
-    };
+    const white = (i, j) => { const o = (j * w + i) * 4, r = d[o], g = d[o + 1], b = d[o + 2]; return Math.min(r, g, b) > 224 && Math.max(r, g, b) - Math.min(r, g, b) < 24; };
+    const rowBlank = j => { let n = 0; for (let i = 0; i < w; i++) n += white(i, j); return n / w > .94; };
+    const colBlank = (i, j0, j1) => { let n = 0; for (let j = j0; j < j1; j++) n += white(i, j); return n / Math.max(1, j1 - j0) > .94; };
     let top = 0, bot = 0;
-    while (top < h && blankRow(top)) top++;
-    while (bot < h - top && blankRow(h - 1 - bot)) bot++;
-    let t = top / h, b = bot / h;
-    if (t < .06) t = 0; if (b < .06) b = 0;
-    if (1 - t - b < .4) return { top: 0, bottom: 0 };
-    return { top: t, bottom: b };
-  } catch (e) { return { top: 0, bottom: 0 }; }
+    while (top < h && rowBlank(top)) top++;
+    while (bot < h - top && rowBlank(h - 1 - bot)) bot++;
+    if (top / h < .06 && bot / h < .06) return none;            // no real banner
+    let left = 0, right = 0;                                     // then tidy thin side margins
+    while (left < w / 4 && colBlank(left, top, h - bot)) left++;
+    while (right < w / 4 && colBlank(w - 1 - right, top, h - bot)) right++;
+    const out = { top: top / h, bottom: bot / h, left: left / w, right: right / w };
+    if (1 - out.top - out.bottom < .4 || 1 - out.left - out.right < .5) return none;
+    return out;
+  } catch (e) { return none; }
 }
 function bandsFor(url, img) {
-  if (!BAND_CACHE.has(url)) BAND_CACHE.set(url, img.isFallback ? { top: 0, bottom: 0 } : detectBands(img));
+  if (!BAND_CACHE.has(url)) BAND_CACHE.set(url, img.isFallback ? { top: 0, bottom: 0, left: 0, right: 0 } : detectBands(img));
   return BAND_CACHE.get(url);
 }
+const hasBands = b => !!(b && (b.top || b.bottom || b.left || b.right));
 function cropBands(img, bands) {
-  if (!bands || (!bands.top && !bands.bottom)) return img;
-  const W = iw(img), H = ih(img), y0 = Math.round(H * bands.top), h = Math.round(H * (1 - bands.top - bands.bottom));
-  const c = document.createElement("canvas"); c.width = W; c.height = h;
-  c.getContext("2d").drawImage(img, 0, y0, W, h, 0, 0, W, h);
+  if (!hasBands(bands)) return img;
+  const W = iw(img), H = ih(img), l = bands.left || 0, r = bands.right || 0;
+  const x0 = Math.round(W * l), y0 = Math.round(H * bands.top), w = Math.round(W * (1 - l - r)), h = Math.round(H * (1 - bands.top - bands.bottom));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").drawImage(img, x0, y0, w, h, 0, 0, w, h);
   return c;
 }
 async function templateImage(url, label) {
   const img = await loadImg(url, label);
   if (img.isFallback || !/i\.imgflip\.com/.test(url)) return { img, bands: { top: 0, bottom: 0 } };
   const bands = bandsFor(url, img);
-  if (!bands.top && !bands.bottom) return { img, bands };
+  if (!hasBands(bands)) return { img, bands };
   if (!CROP_CACHE.has(url)) CROP_CACHE.set(url, cropBands(img, bands));
   return { img: CROP_CACHE.get(url), bands };
 }
 // Move zones from full-image coordinates into the trimmed image; captions that lived in a banner move onto the picture.
 function remapToBands(layers, bands) {
-  if (!bands || (!bands.top && !bands.bottom)) return layers;
-  const span = 1 - bands.top - bands.bottom;
+  if (!hasBands(bands)) return layers;
+  const span = 1 - bands.top - bands.bottom, hspan = 1 - (bands.left || 0) - (bands.right || 0);
   return layers.map(l => {
     if (l.type === "image" || l.type === "emoji") return l;
     let y = (l.y - bands.top) / span, moved = false;
+    const x = clamp((l.x - (bands.left || 0)) / hspan, .05, .95), w = Math.min(.96, (l.w || .9) / hspan);
     if (y < .06) { y = .1; moved = true; } else if (y > .94) { y = .9; moved = true; }
-    const out = { ...l, y };
+    const out = { ...l, x, y, w };
     if (moved && !l.stroke) Object.assign(out, CLASSIC, { size: Math.max(l.size || 30, 34) });
     return out;
   });

@@ -95,8 +95,8 @@ async def main():
         check("templates load (curated + imgflip list)", n >= 76, n)
         check("baked-text Bernie excluded, blank Bernie present", await pg.evaluate("!tplById('222403160') && !!tplById('224015000')"))
         trim = await pg.evaluate("""(async () => { const sp = await specFromTemplate(tplById('155067746'), ['did a thing', 'result']);
-            return { top: sp.base.bands.top, h: sp.base.img.height, w: sp.base.img.width, y0: sp.layers[0].y, stroke: sp.layers[0].stroke }; })()""")
-        check("white banner trimmed from template", trim["top"] > .3 and trim["h"] < trim["w"], trim)
+            return { top: sp.base.bands.top, left: sp.base.bands.left, h: sp.base.img.height, w: sp.base.img.width, y0: sp.layers[0].y, stroke: sp.layers[0].stroke }; })()""")
+        check("white banner + side margins trimmed", trim["top"] > .3 and trim["left"] > 0 and trim["h"] < 400, trim)
         check("banner caption moved onto picture", abs(trim["y0"] - .1) < .01 and trim["stroke"], trim)
         check("starter memes render", await pg.locator("#results .meme-card").count() == 4)
 

@@ -1,5 +1,5 @@
 // Meme Studio service worker: offline app shell, cached templates, update notifications.
-const VERSION = "2026-11-17.4";
+const VERSION = "2026-11-17.5";
 const SHELL = `shell-${VERSION}`, IMGS = "imgs-v1", FONTS = "fonts-v1", API = "api-v1";
 const SHELL_FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon-32.png"];
 const IMG_LIMIT = 250;
