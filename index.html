@@ -674,7 +674,7 @@ function gemErr(status, body) {
   let msg = "";
   try { msg = JSON.parse(body)?.error?.message || ""; } catch (e) {}
   if ((status === 400 || status === 403) && /api key|API_KEY|permission/i.test(msg + body)) return { code: "badkey", message: "Gemini rejected the API key. Check it in AI settings." };
-  if (status === 429) return { code: "rate", message: "Gemini rate limit or quota reached. Wait a minute and try again." };
+  if (status === 429) return { code: "quota", message: `quota/rate limit hit${msg ? " (" + msg.replace(/\s+/g, " ").slice(0, 120) + ")" : ""}` };
   return { code: status === 404 ? "nomodel" : "http", status, message: `Gemini error ${status}${msg ? ": " + msg.slice(0, 140) : ""}` };
 }
 async function tfetch(url, opts = {}, ms = 30000) {
@@ -717,7 +717,8 @@ async function candidateModels(kind) {
     ? ["gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image", "gemini-3-pro-image"]
     : ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
   const lites = found.filter(id => /lite/.test(id));
-  return uniq([...found.filter(id => !/lite/.test(id)).slice(0, 3), ...lites.slice(0, 1), ...fallback]).slice(0, 6);
+  const full = found.filter(id => !/lite/.test(id));
+  return uniq([...full.slice(0, 2), ...lites.slice(0, 2), ...full.slice(2, 3), ...fallback]).slice(0, 7);
 }
 const noThinkCfg = new Set();
 const GOOD_MODEL_KEY = "memeStudio.goodModel";
@@ -742,8 +743,9 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
         const txt = await r.text();
         if (r.status === 400 && lowThink && /thinking/i.test(txt)) { noThinkCfg.add(model); return gemini(parts, json, { only: model, timeoutMs, onAttempt }); }
         const e = gemErr(r.status, txt);
-        if (e.code === "badkey" || e.code === "rate") { toast(e.message, "err"); throw e; }
+        if (e.code === "badkey") { toast(e.message, "err"); throw e; }
         if (r.status >= 500) e.message = `${model} is busy right now (${r.status}).`;
+        if (r.status === 429) e.message = `${model}: ${e.message}.`;
         onAttempt && onAttempt(model, "fail", e.message, Date.now() - t0);
         last = e; continue;
       }
@@ -758,13 +760,14 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
       onAttempt && onAttempt(model, "ok", "", Date.now() - t0);
       return text;
     } catch (e) {
-      if (e && ["badkey", "rate"].includes(e.code)) throw e;
+      if (e && e.code === "badkey") throw e;
       last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." };
       if (e && e.code === "timeout") last = { code: "timeout", message: `${model} was too slow (over ${timeoutMs / 1000}s).` };
       onAttempt && onAttempt(model, "fail", last.message, Date.now() - t0);
     }
   }
   if (goodModel() && !only) { try { localStorage.removeItem(GOOD_MODEL_KEY); } catch (e) {} }
+  if (last && last.code === "quota") throw { code: "quota", message: "Every Gemini model hit its free-tier limit. Wait a minute (or until tomorrow for daily limits) and try again." };
   throw last && last.code === "timeout" || (last && /busy/.test(last.message))
     ? { code: "busy", message: "Gemini is overloaded right now. Wait a minute and try again." }
     : (last || { message: "No Gemini model answered." });
@@ -791,12 +794,12 @@ async function geminiImage(prompt) {
           method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: modalities } })
         }, 60000);
-        if (!r.ok) { last = gemErr(r.status, await r.text()); if (last.code === "badkey" || last.code === "rate") { toast(last.message, "err"); throw last; } if (r.status === 404) break; continue; }
+        if (!r.ok) { last = gemErr(r.status, await r.text()); if (last.code === "badkey") { toast(last.message, "err"); throw last; } if (r.status === 404 || r.status === 429) break; continue; }
         const d = await r.json();
         const part = (d?.candidates?.[0]?.content?.parts || []).find(p => p.inlineData);
         if (part) { lastModel = m; return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`; }
         last = { message: "Gemini didn't return an image for that prompt." };
-      } catch (e) { if (e && ["badkey", "rate", "timeout"].includes(e.code)) throw e; last = e; }
+      } catch (e) { if (e && ["badkey", "timeout"].includes(e.code)) throw e; last = e; }
     }
   }
   throw last || { message: "No image model is available for this key." };
@@ -830,7 +833,7 @@ $("#keyTest").onclick = async () => {
     const all = await listModels(v, true);
     const ranked = rankText(all);
     l.textContent = `✅ 1. Key accepted. ${all.length} models available (${secs(t0)})`;
-    line(`2. Models to try, in order: ${(await candidateModels("text")).slice(0, 4).join(", ")}`);
+    line(`2. Models to try, in order: ${(await candidateModels("text")).join(", ")}`);
     t0 = Date.now();
     try { localStorage.removeItem(GOOD_MODEL_KEY); } catch (e) {}
     const rows = {};
@@ -1121,7 +1124,7 @@ Reply with ONLY JSON: {"ideas":[{"top":"","bottom":""}]}`, { images: [blob] });
     $("#photoIdeas").innerHTML = `<div class="row-label" style="margin:8px 0 0"><span>Pick a caption</span></div>` +
       ideas.map((x, i) => `<button class="idea" data-i="${i}"><b>${esc(noDash(x.top))}</b>${esc(noDash(x.bottom))}</button>`).join("");
     $$(".idea", $("#photoIdeas")).forEach(b => b.onclick = () => { const x = ideas[+b.dataset.i]; openEditor(photoSpec(noDash(x.top), noDash(x.bottom))); });
-  } catch (e) { if (!e || !["badkey","rate","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't caption that photo right now.", "err"); }
+  } catch (e) { if (!e || !["badkey","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't caption that photo right now.", "err"); }
   busy(btn, false);
 };
 
@@ -1176,7 +1179,7 @@ $("#panelAi").onclick = async () => {
 Reply with ONLY JSON: {"captions":["..."]}`);
     (out.captions || []).slice(0, n).forEach((t, i) => panels[i].caption = noDash(t));
     renderSlots(); toast("Panels captioned", "ok");
-  } catch (e) { if (!e || !["badkey","rate","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't write captions right now.", "err"); }
+  } catch (e) { if (!e || !["badkey","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't write captions right now.", "err"); }
   busy(btn, false);
 };
 
@@ -1207,7 +1210,7 @@ async function buildScene() {
     renderMeme($("#sceneCanvas"), sceneSpec.base, sceneSpec.layers);
     $("#sceneCard").classList.remove("hidden");
     $("#sceneCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } catch (e) { if (!e || !["badkey","rate","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Gemini couldn't make that image. Try rewording.", "err"); }
+  } catch (e) { if (!e || !["badkey","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Gemini couldn't make that image. Try rewording.", "err"); }
   busy(btn, false);
 }
 $("#sceneBtn").onclick = buildScene;
@@ -1303,7 +1306,7 @@ Reply with ONLY JSON: {"options":[{"style":"","text":""}]}`);
     const box = $(".punch", card);
     box.innerHTML = opts.map(o => `<button data-a="apply" data-text="${esc(noDash(o.text))}"><small>${esc(o.style || "Option")}</small>${esc(noDash(o.text))}</button>`).join("");
     box.classList.remove("hidden");
-  } catch (e) { if (!e || !["badkey","rate","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't punch that up right now.", "err"); }
+  } catch (e) { if (!e || !["badkey","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't punch that up right now.", "err"); }
   busy(btn, false);
 }
 $("#addLayer").onclick = () => {
