@@ -433,8 +433,11 @@ function toast(msg, kind = "") {
   setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(8px)"; setTimeout(() => t.remove(), 300); }, kind === "err" ? 6000 : 3000);
 }
 function busy(btn, on, label) {
-  if (on) { btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = label; }
-  else { btn.disabled = false; if (btn.dataset.orig) btn.innerHTML = btn.dataset.orig; }
+  clearInterval(btn._tick);
+  if (on) {
+    btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = label;
+    if (label.length > 3) { const t0 = Date.now(); btn._tick = setInterval(() => { btn.innerHTML = `${label} ${Math.round((Date.now() - t0) / 1000)}s`; }, 1000); }
+  } else { btn.disabled = false; if (btn.dataset.orig) btn.innerHTML = btn.dataset.orig; }
 }
 function fallbackImage(label) {
   const c = document.createElement("canvas"); c.width = 720; c.height = 720;
@@ -673,10 +676,16 @@ function gemErr(status, body) {
   if (status === 429) return { code: "rate", message: "Gemini rate limit or quota reached. Wait a minute and try again." };
   return { code: status === 404 ? "nomodel" : "http", status, message: `Gemini error ${status}${msg ? ": " + msg.slice(0, 140) : ""}` };
 }
+async function tfetch(url, opts = {}, ms = 30000) {
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: ac.signal }); }
+  catch (e) { if (e && e.name === "AbortError") throw { code: "timeout", message: `Gemini took longer than ${ms / 1000}s. Try again.` }; throw e; }
+  finally { clearTimeout(t); }
+}
 async function listModels(key, force = false) {
   const tag = key.slice(-8);
   if (!force) { try { const c = JSON.parse(localStorage.getItem(MODEL_CACHE_KEY) || "null"); if (c && c.tag === tag && Date.now() - c.t < 6 * 3600e3) return c.models; } catch (e) {} }
-  const r = await fetch(`${GEM}/models?pageSize=1000&key=${encodeURIComponent(key)}`);
+  const r = await tfetch(`${GEM}/models?pageSize=1000&key=${encodeURIComponent(key)}`);
   if (!r.ok) throw gemErr(r.status, await r.text());
   const d = await r.json();
   const models = (d.models || []).map(m => ({ id: String(m.name || "").replace(/^models\//, ""), methods: m.supportedGenerationMethods || [] }));
@@ -716,7 +725,7 @@ async function gemini(parts, json = true) {
     try {
       const body = { contents: [{ role: "user", parts }] };
       if (json) body.generationConfig = { responseMimeType: "application/json" };
-      const r = await fetch(`${GEM}/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+      const r = await tfetch(`${GEM}/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!r.ok) {
         const e = gemErr(r.status, await r.text());
@@ -728,7 +737,7 @@ async function gemini(parts, json = true) {
       if (!text) { last = { code: "empty", message: d?.promptFeedback?.blockReason ? `Gemini blocked that prompt (${d.promptFeedback.blockReason}).` : "Gemini sent back an empty answer." }; continue; }
       lastModel = model;
       return text;
-    } catch (e) { if (e && (e.code === "badkey" || e.code === "rate")) throw e; last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." }; }
+    } catch (e) { if (e && ["badkey", "rate", "timeout"].includes(e.code)) throw e; last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." }; }
   }
   try { localStorage.removeItem(MODEL_CACHE_KEY); } catch (e) {}
   throw last || { message: "No Gemini model answered." };
@@ -751,16 +760,16 @@ async function geminiImage(prompt) {
   for (const m of await candidateModels("image")) {
     for (const modalities of [["IMAGE"], ["TEXT", "IMAGE"]]) {
       try {
-        const r = await fetch(`${GEM}/models/${m}:generateContent?key=${encodeURIComponent(key)}`, {
+        const r = await tfetch(`${GEM}/models/${m}:generateContent?key=${encodeURIComponent(key)}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: modalities } })
-        });
+        }, 60000);
         if (!r.ok) { last = gemErr(r.status, await r.text()); if (last.code === "badkey" || last.code === "rate") { toast(last.message, "err"); throw last; } if (r.status === 404) break; continue; }
         const d = await r.json();
         const part = (d?.candidates?.[0]?.content?.parts || []).find(p => p.inlineData);
         if (part) { lastModel = m; return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`; }
         last = { message: "Gemini didn't return an image for that prompt." };
-      } catch (e) { if (e && (e.code === "badkey" || e.code === "rate")) throw e; last = e; }
+      } catch (e) { if (e && ["badkey", "rate", "timeout"].includes(e.code)) throw e; last = e; }
     }
   }
   throw last || { message: "No image model is available for this key." };
