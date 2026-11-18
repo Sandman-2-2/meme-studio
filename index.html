@@ -430,7 +430,7 @@ function toast(msg, kind = "") {
   const t = document.createElement("div");
   t.className = "toast " + kind; t.textContent = msg;
   $("#toasts").appendChild(t);
-  setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(8px)"; setTimeout(() => t.remove(), 300); }, 3000);
+  setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(8px)"; setTimeout(() => t.remove(), 300); }, kind === "err" ? 6000 : 3000);
 }
 function busy(btn, on, label) {
   if (on) { btn.dataset.orig = btn.innerHTML; btn.disabled = true; btn.innerHTML = label; }
@@ -662,32 +662,81 @@ function syncAiChip() {
   $("#aiChip").classList.toggle("on", on);
   $("#aiChipText").textContent = on ? "AI ready" : "Add AI key";
 }
-const TEXT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+/* Model discovery: ask Google which models this key can use, so retired models never break the app. */
+const MODEL_CACHE_KEY = "memeStudio.models.v2";
+const GEM = "https://generativelanguage.googleapis.com/v1beta";
+let lastModel = "";
+function gemErr(status, body) {
+  let msg = "";
+  try { msg = JSON.parse(body)?.error?.message || ""; } catch (e) {}
+  if ((status === 400 || status === 403) && /api key|API_KEY|permission/i.test(msg + body)) return { code: "badkey", message: "Gemini rejected the API key. Check it in AI settings." };
+  if (status === 429) return { code: "rate", message: "Gemini rate limit or quota reached. Wait a minute and try again." };
+  return { code: status === 404 ? "nomodel" : "http", status, message: `Gemini error ${status}${msg ? ": " + msg.slice(0, 140) : ""}` };
+}
+async function listModels(key, force = false) {
+  const tag = key.slice(-8);
+  if (!force) { try { const c = JSON.parse(localStorage.getItem(MODEL_CACHE_KEY) || "null"); if (c && c.tag === tag && Date.now() - c.t < 6 * 3600e3) return c.models; } catch (e) {} }
+  const r = await fetch(`${GEM}/models?pageSize=1000&key=${encodeURIComponent(key)}`);
+  if (!r.ok) throw gemErr(r.status, await r.text());
+  const d = await r.json();
+  const models = (d.models || []).map(m => ({ id: String(m.name || "").replace(/^models\//, ""), methods: m.supportedGenerationMethods || [] }));
+  try { localStorage.setItem(MODEL_CACHE_KEY, JSON.stringify({ tag, t: Date.now(), models })); } catch (e) {}
+  return models;
+}
+const verOf = id => { const m = id.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
+function rankText(models) {
+  return models
+    .filter(m => m.methods.includes("generateContent") && /^gemini-/.test(m.id) && /flash/.test(m.id)
+      && !/image|tts|audio|live|embed|computer|robotics|native|omni|banana|veo|lyria/.test(m.id))
+    .map(m => ({ id: m.id, s: verOf(m.id) * 10 - (/lite/.test(m.id) ? 4 : 0) - (/preview|exp/.test(m.id) ? 1 : 0) + (/latest/.test(m.id) ? 5 : 0) }))
+    .sort((a, b) => b.s - a.s).map(m => m.id);
+}
+function rankImage(models) {
+  return models
+    .filter(m => m.methods.includes("generateContent") && /image|banana/.test(m.id) && !/edit|segment|caption/.test(m.id))
+    .map(m => ({ id: m.id, s: verOf(m.id) * 10 + (/banana/.test(m.id) ? 30 : 0) - (/preview|exp/.test(m.id) ? 1 : 0) - (/pro/.test(m.id) ? 2 : 0) }))
+    .sort((a, b) => b.s - a.s).map(m => m.id);
+}
+const uniq = a => [...new Set(a.filter(Boolean))];
+async function candidateModels(kind) {
+  const key = getKey();
+  let found = [];
+  try { const all = await listModels(key); found = kind === "image" ? rankImage(all) : rankText(all); }
+  catch (e) { if (e && e.code === "badkey") { toast(e.message, "err"); throw e; } }
+  const fallback = kind === "image"
+    ? ["gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image", "gemini-3-pro-image"]
+    : ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
+  return uniq([...found.slice(0, 4), ...fallback]);
+}
 async function gemini(parts, json = true) {
   const key = getKey();
-  if (!key) { openSettings(); throw { code: "nokey" }; }
+  if (!key) { openSettings(); throw { code: "nokey", message: "No API key yet." }; }
   let last;
-  for (const model of TEXT_MODELS) {
+  for (const model of await candidateModels("text")) {
     try {
       const body = { contents: [{ role: "user", parts }] };
-      if (json) body.generationConfig = { responseMimeType: "application/json", temperature: 1 };
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+      if (json) body.generationConfig = { responseMimeType: "application/json" };
+      const r = await fetch(`${GEM}/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (r.status === 400 || r.status === 403) { const t = await r.text(); if (/API key/i.test(t)) { toast("Gemini rejected that API key. Check it in AI settings.", "err"); throw { code: "badkey" }; } }
-      if (r.status === 429) { toast("Gemini is rate-limiting. Wait a moment and try again.", "err"); throw { code: "rate" }; }
-      if (!r.ok) throw new Error("HTTP " + r.status);
+      if (!r.ok) {
+        const e = gemErr(r.status, await r.text());
+        if (e.code === "badkey" || e.code === "rate") { toast(e.message, "err"); throw e; }
+        last = e; continue;
+      }
       const d = await r.json();
-      const text = d?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("");
-      if (!text) throw new Error("Empty response");
+      const text = (d?.candidates?.[0]?.content?.parts || []).filter(p => !p.thought).map(p => p.text || "").join("");
+      if (!text) { last = { code: "empty", message: d?.promptFeedback?.blockReason ? `Gemini blocked that prompt (${d.promptFeedback.blockReason}).` : "Gemini sent back an empty answer." }; continue; }
+      lastModel = model;
       return text;
-    } catch (e) { last = e; if (e && e.code) throw e; }
+    } catch (e) { if (e && (e.code === "badkey" || e.code === "rate")) throw e; last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." }; }
   }
-  throw last || new Error("Gemini unavailable");
+  try { localStorage.removeItem(MODEL_CACHE_KEY); } catch (e) {}
+  throw last || { message: "No Gemini model answered." };
 }
 function parseLoose(t) {
   t = String(t || "").replace(/```(?:json)?/gi, "").trim();
   const a = t.indexOf("{"), b = t.lastIndexOf("}");
-  if (a < 0 || b < a) throw new Error("No JSON");
+  if (a < 0 || b < a) throw { message: "Gemini's answer wasn't in the expected format." };
   return JSON.parse(t.slice(a, b + 1));
 }
 async function askJSON(prompt, { images } = {}) {
@@ -697,28 +746,24 @@ async function askJSON(prompt, { images } = {}) {
 }
 async function geminiImage(prompt) {
   const key = getKey();
-  if (!key) { openSettings(); throw { code: "nokey" }; }
-  const models = ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"];
-  for (const m of models) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(key)}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: m.includes("preview") ? ["TEXT", "IMAGE"] : ["IMAGE"] } })
-      });
-      if (!r.ok) continue;
-      const d = await r.json();
-      const part = d?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-      if (part) return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`;
-    } catch (e) {}
+  if (!key) { openSettings(); throw { code: "nokey", message: "No API key yet." }; }
+  let last;
+  for (const m of await candidateModels("image")) {
+    for (const modalities of [["IMAGE"], ["TEXT", "IMAGE"]]) {
+      try {
+        const r = await fetch(`${GEM}/models/${m}:generateContent?key=${encodeURIComponent(key)}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: modalities } })
+        });
+        if (!r.ok) { last = gemErr(r.status, await r.text()); if (last.code === "badkey" || last.code === "rate") { toast(last.message, "err"); throw last; } if (r.status === 404) break; continue; }
+        const d = await r.json();
+        const part = (d?.candidates?.[0]?.content?.parts || []).find(p => p.inlineData);
+        if (part) { lastModel = m; return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`; }
+        last = { message: "Gemini didn't return an image for that prompt." };
+      } catch (e) { if (e && (e.code === "badkey" || e.code === "rate")) throw e; last = e; }
+    }
   }
-  try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${encodeURIComponent(key)}`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ instances: [{ prompt }], parameters: { sampleCount: 1 } })
-    });
-    if (r.ok) { const d = await r.json(); const b = d?.predictions?.[0]?.bytesBase64Encoded; if (b) return `data:image/png;base64,${b}`; }
-  } catch (e) {}
-  throw new Error("No image");
+  throw last || { message: "No image model is available for this key." };
 }
 const noDash = s => String(s ?? "").replace(/\s*[—–]\s*/g, ", ").trim();
 const safety = () => $("#gRated").checked
@@ -740,8 +785,8 @@ $("#keyTest").onclick = async () => {
   try { localStorage.setItem(KEY_STORE, v); } catch (e) {}
   syncAiChip();
   const btn = $("#keyTest"); busy(btn, true, "⏳ Testing…");
-  try { const out = await askJSON('Reply with ONLY JSON: {"ok":true}'); toast(out.ok ? "It works! AI is ready." : "Got a reply, but an odd one.", out.ok ? "ok" : ""); }
-  catch (e) { if (!e || !e.code) toast("Couldn't reach Gemini with that key.", "err"); }
+  try { try { localStorage.removeItem(MODEL_CACHE_KEY); } catch (e) {} const out = await askJSON('Reply with ONLY JSON: {"ok":true}'); toast(out.ok ? `It works! Using ${lastModel}.` : "Got a reply, but an odd one.", out.ok ? "ok" : ""); }
+  catch (e) { if (!e || (e.code !== "badkey" && e.code !== "rate")) toast(e && e.message ? e.message : "Couldn't reach Gemini with that key.", "err"); }
   busy(btn, false);
 };
 
@@ -954,12 +999,13 @@ async function generate() {
   $("#results").innerHTML = ["😂", "🤔", "😎", "🔥"].map(x => `<div class="skel"><span>${x}</span></div>`).join("");
   $("#resultsTitle").textContent = "Matching templates & writing punchlines…";
   let memes = null;
-  if (hasAI()) { try { memes = validMemes((await askJSON(genPrompt(p, th, templatePool(th)))).memes); } catch (e) {} }
+  let aiErr = null;
+  if (hasAI()) { try { memes = validMemes((await askJSON(genPrompt(p, th, templatePool(th)))).memes); if (!memes) aiErr = { message: "Gemini picked templates that don't exist." }; } catch (e) { aiErr = e; } }
   const usedAI = !!memes;
   if (!memes) memes = fallbackMemes(p, th);
   await renderResults(memes);
   $("#resultsTitle").textContent = usedAI ? `Fresh memes · ${th === "All" ? tone : th + " · " + tone}` : "Quick memes (instant mode)";
-  toast(usedAI ? "4 fresh memes, hot off the press!" : hasAI() ? "AI didn't answer, so here are quick memes instead." : "Instant mode. Add a Gemini key for AI captions.", usedAI ? "ok" : "");
+  toast(usedAI ? "4 fresh memes, hot off the press!" : hasAI() ? `Quick memes instead. ${aiErr && aiErr.message ? aiErr.message : "AI didn't answer."}` : "Instant mode. Add a Gemini key for AI captions.", usedAI ? "ok" : "");
   busy(btn, false);
 }
 
@@ -1021,7 +1067,7 @@ Reply with ONLY JSON: {"ideas":[{"top":"","bottom":""}]}`, { images: [blob] });
     $("#photoIdeas").innerHTML = `<div class="row-label" style="margin:8px 0 0"><span>Pick a caption</span></div>` +
       ideas.map((x, i) => `<button class="idea" data-i="${i}"><b>${esc(noDash(x.top))}</b>${esc(noDash(x.bottom))}</button>`).join("");
     $$(".idea", $("#photoIdeas")).forEach(b => b.onclick = () => { const x = ideas[+b.dataset.i]; openEditor(photoSpec(noDash(x.top), noDash(x.bottom))); });
-  } catch (e) { if (!e || !e.code) toast("Couldn't caption that photo right now.", "err"); }
+  } catch (e) { if (!e || !["badkey","rate","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't caption that photo right now.", "err"); }
   busy(btn, false);
 };
 
@@ -1076,7 +1122,7 @@ $("#panelAi").onclick = async () => {
 Reply with ONLY JSON: {"captions":["..."]}`);
     (out.captions || []).slice(0, n).forEach((t, i) => panels[i].caption = noDash(t));
     renderSlots(); toast("Panels captioned", "ok");
-  } catch (e) { if (!e || !e.code) toast("Couldn't write captions right now.", "err"); }
+  } catch (e) { if (!e || !["badkey","rate","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't write captions right now.", "err"); }
   busy(btn, false);
 };
 
@@ -1107,7 +1153,7 @@ async function buildScene() {
     renderMeme($("#sceneCanvas"), sceneSpec.base, sceneSpec.layers);
     $("#sceneCard").classList.remove("hidden");
     $("#sceneCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } catch (e) { if (!e || !e.code) toast("Gemini couldn't make that image. Try rewording, or check that your key has image access.", "err"); }
+  } catch (e) { if (!e || !["badkey","rate","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Gemini couldn't make that image. Try rewording.", "err"); }
   busy(btn, false);
 }
 $("#sceneBtn").onclick = buildScene;
@@ -1203,7 +1249,7 @@ Reply with ONLY JSON: {"options":[{"style":"","text":""}]}`);
     const box = $(".punch", card);
     box.innerHTML = opts.map(o => `<button data-a="apply" data-text="${esc(noDash(o.text))}"><small>${esc(o.style || "Option")}</small>${esc(noDash(o.text))}</button>`).join("");
     box.classList.remove("hidden");
-  } catch (e) { if (!e || !e.code) toast("Couldn't punch that up right now.", "err"); }
+  } catch (e) { if (!e || !["badkey","rate","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't punch that up right now.", "err"); }
   busy(btn, false);
 }
 $("#addLayer").onclick = () => {
