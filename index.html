@@ -716,37 +716,58 @@ async function candidateModels(kind) {
   const fallback = kind === "image"
     ? ["gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image", "gemini-3-pro-image"]
     : ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
-  return uniq([...found.slice(0, 4), ...fallback]);
+  const lites = found.filter(id => /lite/.test(id));
+  return uniq([...found.filter(id => !/lite/.test(id)).slice(0, 3), ...lites.slice(0, 1), ...fallback]).slice(0, 6);
 }
 const noThinkCfg = new Set();
-async function gemini(parts, json = true, { only = null, timeoutMs = 45000 } = {}) {
+const GOOD_MODEL_KEY = "memeStudio.goodModel";
+const goodModel = () => { try { return localStorage.getItem(GOOD_MODEL_KEY) || ""; } catch (e) { return ""; } };
+// Tries each candidate model in turn. Busy (5xx), slow (timeout) or missing (404) models are skipped.
+async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAttempt = null } = {}) {
   const key = getKey();
   if (!key) { openSettings(); throw { code: "nokey", message: "No API key yet." }; }
-  let last, timedOut = 0;
-  for (const model of only ? [only] : await candidateModels("text")) {
+  let last;
+  const list = only ? [only] : uniq([goodModel(), ...(await candidateModels("text"))]);
+  for (const model of list) {
+    const t0 = Date.now();
     try {
       const body = { contents: [{ role: "user", parts }], generationConfig: {} };
       if (json) body.generationConfig.responseMimeType = "application/json";
       const lowThink = /gemini-(3|4)/.test(model) && !noThinkCfg.has(model);
       if (lowThink) body.generationConfig.thinkingConfig = { thinkingLevel: "low" };
+      onAttempt && onAttempt(model, "trying");
       const r = await tfetch(`${GEM}/models/${model}:generateContent`,
         { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body) }, timeoutMs);
       if (!r.ok) {
         const txt = await r.text();
-        if (r.status === 400 && lowThink && /thinking/i.test(txt)) { noThinkCfg.add(model); return gemini(parts, json, { only: model, timeoutMs }); }
+        if (r.status === 400 && lowThink && /thinking/i.test(txt)) { noThinkCfg.add(model); return gemini(parts, json, { only: model, timeoutMs, onAttempt }); }
         const e = gemErr(r.status, txt);
         if (e.code === "badkey" || e.code === "rate") { toast(e.message, "err"); throw e; }
+        if (r.status >= 500) e.message = `${model} is busy right now (${r.status}).`;
+        onAttempt && onAttempt(model, "fail", e.message, Date.now() - t0);
         last = e; continue;
       }
       const d = await r.json();
       const text = (d?.candidates?.[0]?.content?.parts || []).filter(p => !p.thought).map(p => p.text || "").join("");
-      if (!text) { last = { code: "empty", message: d?.promptFeedback?.blockReason ? `Gemini blocked that prompt (${d.promptFeedback.blockReason}).` : "Gemini sent back an empty answer." }; continue; }
+      if (!text) {
+        last = { code: "empty", message: d?.promptFeedback?.blockReason ? `Gemini blocked that prompt (${d.promptFeedback.blockReason}).` : "Gemini sent back an empty answer." };
+        onAttempt && onAttempt(model, "fail", last.message, Date.now() - t0); continue;
+      }
       lastModel = model;
+      try { localStorage.setItem(GOOD_MODEL_KEY, model); } catch (e) {}
+      onAttempt && onAttempt(model, "ok", "", Date.now() - t0);
       return text;
-    } catch (e) { if (e && ["badkey", "rate"].includes(e.code)) throw e; last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." }; if (e && e.code === "timeout" && timedOut++) throw e; }
+    } catch (e) {
+      if (e && ["badkey", "rate"].includes(e.code)) throw e;
+      last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." };
+      if (e && e.code === "timeout") last = { code: "timeout", message: `${model} was too slow (over ${timeoutMs / 1000}s).` };
+      onAttempt && onAttempt(model, "fail", last.message, Date.now() - t0);
+    }
   }
-  try { localStorage.removeItem(MODEL_CACHE_KEY); } catch (e) {}
-  throw last || { message: "No Gemini model answered." };
+  if (goodModel() && !only) { try { localStorage.removeItem(GOOD_MODEL_KEY); } catch (e) {} }
+  throw last && last.code === "timeout" || (last && /busy/.test(last.message))
+    ? { code: "busy", message: "Gemini is overloaded right now. Wait a minute and try again." }
+    : (last || { message: "No Gemini model answered." });
 }
 function parseLoose(t) {
   t = String(t || "").replace(/```(?:json)?/gi, "").trim();
@@ -809,17 +830,17 @@ $("#keyTest").onclick = async () => {
     const all = await listModels(v, true);
     const ranked = rankText(all);
     l.textContent = `✅ 1. Key accepted. ${all.length} models available (${secs(t0)})`;
-    const pick = ranked[0] || "gemini-flash-latest";
-    line(`2. Best text model: ${pick}${ranked[1] ? ` (backup: ${ranked[1]})` : ""}`);
-    t0 = Date.now(); l = line(`3. Asking ${pick} for a test reply…`);
-    const tick = setInterval(() => { l.textContent = `3. Asking ${pick} for a test reply… ${secs(t0)}`; }, 500);
-    try {
-      const out = parseLoose(await gemini([{ text: 'Reply with ONLY JSON: {"ok":true}' }], true, { only: pick, timeoutMs: 45000 }));
-      clearInterval(tick);
-      l.textContent = out.ok ? `✅ 3. ${pick} replied in ${secs(t0)}. AI is ready!` : `⚠️ 3. Odd reply after ${secs(t0)}.`;
-      if (out.ok) toast("It works! AI is ready.", "ok");
-    } catch (e) { clearInterval(tick); l.textContent = `❌ 3. ${e && e.message ? e.message : "No reply."} (${secs(t0)})`; }
-  } catch (e) { l.textContent = `❌ 1. ${e && e.message ? e.message : "Couldn't reach Google."} (${secs(t0)})`; }
+    line(`2. Models to try, in order: ${(await candidateModels("text")).slice(0, 4).join(", ")}`);
+    t0 = Date.now();
+    try { localStorage.removeItem(GOOD_MODEL_KEY); } catch (e) {}
+    const rows = {};
+    const out = parseLoose(await gemini([{ text: 'Reply with ONLY JSON: {"ok":true}' }], true, {
+      onAttempt: (m, st, msg, ms) => {
+        rows[m] = rows[m] || line("");
+        rows[m].textContent = st === "trying" ? `3. Trying ${m}…` : st === "ok" ? `✅ 3. ${m} replied in ${(ms / 1000).toFixed(1)}s. AI is ready!` : `⏭️ ${msg} Trying the next one…`;
+      } }).catch(e => { line(`❌ ${e && e.message ? e.message : "No reply."}`); e.shown = true; throw e; }));
+    if (out.ok) toast(`It works! Using ${lastModel}.`, "ok");
+  } catch (e) { if (!e || !e.shown) l.textContent = `❌ 1. ${e && e.message ? e.message : "Couldn't reach Google."} (${secs(t0)})`; }
   busy(btn, false);
 };
 
