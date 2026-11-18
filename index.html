@@ -410,6 +410,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
       <button class="btn" id="keyTest">Test it</button>
       <button class="btn ghost" id="keyClear">Remove key</button>
     </div>
+    <div id="keyDiag" class="stack hidden" style="font-size:13.5px;gap:6px"></div>
   </div>
 </div>
 
@@ -685,7 +686,7 @@ async function tfetch(url, opts = {}, ms = 30000) {
 async function listModels(key, force = false) {
   const tag = key.slice(-8);
   if (!force) { try { const c = JSON.parse(localStorage.getItem(MODEL_CACHE_KEY) || "null"); if (c && c.tag === tag && Date.now() - c.t < 6 * 3600e3) return c.models; } catch (e) {} }
-  const r = await tfetch(`${GEM}/models?pageSize=1000&key=${encodeURIComponent(key)}`);
+  const r = await tfetch(`${GEM}/models?pageSize=1000`, { headers: { "x-goog-api-key": key } }, 20000);
   if (!r.ok) throw gemErr(r.status, await r.text());
   const d = await r.json();
   const models = (d.models || []).map(m => ({ id: String(m.name || "").replace(/^models\//, ""), methods: m.supportedGenerationMethods || [] }));
@@ -717,18 +718,23 @@ async function candidateModels(kind) {
     : ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
   return uniq([...found.slice(0, 4), ...fallback]);
 }
-async function gemini(parts, json = true) {
+const noThinkCfg = new Set();
+async function gemini(parts, json = true, { only = null, timeoutMs = 45000 } = {}) {
   const key = getKey();
   if (!key) { openSettings(); throw { code: "nokey", message: "No API key yet." }; }
-  let last;
-  for (const model of await candidateModels("text")) {
+  let last, timedOut = 0;
+  for (const model of only ? [only] : await candidateModels("text")) {
     try {
-      const body = { contents: [{ role: "user", parts }] };
-      if (json) body.generationConfig = { responseMimeType: "application/json" };
-      const r = await tfetch(`${GEM}/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const body = { contents: [{ role: "user", parts }], generationConfig: {} };
+      if (json) body.generationConfig.responseMimeType = "application/json";
+      const lowThink = /gemini-(3|4)/.test(model) && !noThinkCfg.has(model);
+      if (lowThink) body.generationConfig.thinkingConfig = { thinkingLevel: "low" };
+      const r = await tfetch(`${GEM}/models/${model}:generateContent`,
+        { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body) }, timeoutMs);
       if (!r.ok) {
-        const e = gemErr(r.status, await r.text());
+        const txt = await r.text();
+        if (r.status === 400 && lowThink && /thinking/i.test(txt)) { noThinkCfg.add(model); return gemini(parts, json, { only: model, timeoutMs }); }
+        const e = gemErr(r.status, txt);
         if (e.code === "badkey" || e.code === "rate") { toast(e.message, "err"); throw e; }
         last = e; continue;
       }
@@ -737,7 +743,7 @@ async function gemini(parts, json = true) {
       if (!text) { last = { code: "empty", message: d?.promptFeedback?.blockReason ? `Gemini blocked that prompt (${d.promptFeedback.blockReason}).` : "Gemini sent back an empty answer." }; continue; }
       lastModel = model;
       return text;
-    } catch (e) { if (e && ["badkey", "rate", "timeout"].includes(e.code)) throw e; last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." }; }
+    } catch (e) { if (e && ["badkey", "rate"].includes(e.code)) throw e; last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." }; if (e && e.code === "timeout" && timedOut++) throw e; }
   }
   try { localStorage.removeItem(MODEL_CACHE_KEY); } catch (e) {}
   throw last || { message: "No Gemini model answered." };
@@ -760,8 +766,8 @@ async function geminiImage(prompt) {
   for (const m of await candidateModels("image")) {
     for (const modalities of [["IMAGE"], ["TEXT", "IMAGE"]]) {
       try {
-        const r = await tfetch(`${GEM}/models/${m}:generateContent?key=${encodeURIComponent(key)}`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
+        const r = await tfetch(`${GEM}/models/${m}:generateContent`, {
+          method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: modalities } })
         }, 60000);
         if (!r.ok) { last = gemErr(r.status, await r.text()); if (last.code === "badkey" || last.code === "rate") { toast(last.message, "err"); throw last; } if (r.status === 404) break; continue; }
@@ -791,11 +797,29 @@ $("#keySave").onclick = () => {
 $("#keyClear").onclick = () => { try { localStorage.removeItem(KEY_STORE); } catch (e) {} $("#keyInput").value = ""; syncAiChip(); toast("Key removed"); };
 $("#keyTest").onclick = async () => {
   const v = $("#keyInput").value.trim(); if (!v) return toast("Paste a key first.", "err");
-  try { localStorage.setItem(KEY_STORE, v); } catch (e) {}
+  try { localStorage.setItem(KEY_STORE, v); localStorage.removeItem(MODEL_CACHE_KEY); } catch (e) {}
   syncAiChip();
-  const btn = $("#keyTest"); busy(btn, true, "⏳ Testing…");
-  try { try { localStorage.removeItem(MODEL_CACHE_KEY); } catch (e) {} const out = await askJSON('Reply with ONLY JSON: {"ok":true}'); toast(out.ok ? `It works! Using ${lastModel}.` : "Got a reply, but an odd one.", out.ok ? "ok" : ""); }
-  catch (e) { if (!e || (e.code !== "badkey" && e.code !== "rate")) toast(e && e.message ? e.message : "Couldn't reach Gemini with that key.", "err"); }
+  const btn = $("#keyTest"), diag = $("#keyDiag");
+  diag.classList.remove("hidden"); diag.innerHTML = "";
+  const line = t => { const d = document.createElement("div"); d.textContent = t; diag.appendChild(d); return d; };
+  const secs = t0 => ((Date.now() - t0) / 1000).toFixed(1) + "s";
+  busy(btn, true, "⏳ Testing…");
+  let t0 = Date.now(), l = line("1. Checking your key with Google…");
+  try {
+    const all = await listModels(v, true);
+    const ranked = rankText(all);
+    l.textContent = `✅ 1. Key accepted. ${all.length} models available (${secs(t0)})`;
+    const pick = ranked[0] || "gemini-flash-latest";
+    line(`2. Best text model: ${pick}${ranked[1] ? ` (backup: ${ranked[1]})` : ""}`);
+    t0 = Date.now(); l = line(`3. Asking ${pick} for a test reply…`);
+    const tick = setInterval(() => { l.textContent = `3. Asking ${pick} for a test reply… ${secs(t0)}`; }, 500);
+    try {
+      const out = parseLoose(await gemini([{ text: 'Reply with ONLY JSON: {"ok":true}' }], true, { only: pick, timeoutMs: 45000 }));
+      clearInterval(tick);
+      l.textContent = out.ok ? `✅ 3. ${pick} replied in ${secs(t0)}. AI is ready!` : `⚠️ 3. Odd reply after ${secs(t0)}.`;
+      if (out.ok) toast("It works! AI is ready.", "ok");
+    } catch (e) { clearInterval(tick); l.textContent = `❌ 3. ${e && e.message ? e.message : "No reply."} (${secs(t0)})`; }
+  } catch (e) { l.textContent = `❌ 1. ${e && e.message ? e.message : "Couldn't reach Google."} (${secs(t0)})`; }
   busy(btn, false);
 };
 
