@@ -1,0 +1,23 @@
+name: Smoke test
+
+# Runs the app in headless Chromium with Gemini and imgflip mocked (no key, no network needed).
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Run smoke tests
+        run: python tests/smoke_test.py

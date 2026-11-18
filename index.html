@@ -55,6 +55,7 @@ h3{font-family:Bangers,cursive;font-weight:400;letter-spacing:1px;font-size:24px
 textarea,input[type=text],select{font:500 15px Inter,sans-serif;color:var(--ink);background:#fffdf7;border:2px solid var(--ink);border-radius:12px;padding:12px 14px;width:100%;outline:none;resize:vertical}
 textarea:focus,input[type=text]:focus,select:focus{box-shadow:0 0 0 3px var(--yellow)}
 .row-label{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.7px}
+.row-label .btn{text-transform:none;letter-spacing:0}
 .link{background:none;border:none;font:800 13px Inter,sans-serif;color:#c2410c;cursor:pointer;padding:0;text-transform:none;letter-spacing:0}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .pill{font:700 13px Inter,sans-serif;padding:7px 12px;border:2px solid var(--ink);border-radius:999px;background:#fff;cursor:pointer}
@@ -94,6 +95,7 @@ textarea:focus,input[type=text]:focus,select:focus{box-shadow:0 0 0 3px var(--ye
 .mc-top span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mc-canvas canvas{width:100%;height:auto;display:block;border:2px solid var(--ink);border-radius:10px;cursor:pointer;background:#eee}
 .mc-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mc-actions.remix{grid-template-columns:1fr 1fr;margin-top:-2px}
 .mc-actions .btn{padding:8px 4px;font-size:12.5px;box-shadow:2px 2px 0 var(--ink)}
 .mc-meta{font-size:11.5px;color:var(--muted);margin-top:-4px}
 .skel{border:3px solid var(--ink);border-radius:16px;background:#fff;box-shadow:var(--shadow);aspect-ratio:3/4;position:relative;overflow:hidden}
@@ -167,6 +169,12 @@ textarea:focus,input[type=text]:focus,select:focus{box-shadow:0 0 0 3px var(--ye
 .layer input[type=color]{width:32px;height:30px;border:2px solid var(--ink);border-radius:8px;padding:0;background:#fff;cursor:pointer}
 .tgl{font:800 12px Inter,sans-serif;border:2px solid var(--ink);border-radius:9px;padding:5px 8px;background:#fff;cursor:pointer}
 .tgl.on{background:var(--ink);color:#fff}
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;background:#fff;border:2px solid var(--ink);border-radius:12px;padding:8px}
+.emoji-grid button{font-size:24px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px}
+.emoji-grid button:hover{background:#fff3c4}
+.history{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.history button{flex:none;max-width:220px;text-align:left;font:600 12px Inter,sans-serif;border:2px solid var(--ink);border-radius:10px;background:#fff;padding:7px 10px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history button small{display:block;color:var(--muted);font-weight:500}
 .punch{display:flex;flex-direction:column;gap:6px}
 .punch button{text-align:left;background:#fffdf7;border:2px solid var(--ink);border-radius:10px;padding:7px 9px;cursor:pointer;font-size:13px}
 .punch button:hover{background:#fff3c4}
@@ -182,6 +190,8 @@ textarea:focus,input[type=text]:focus,select:focus{box-shadow:0 0 0 3px var(--ye
 #toasts{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:min(92vw,440px)}
 .toast{background:#fff;border:2px solid var(--ink);border-radius:12px;box-shadow:3px 3px 0 var(--ink);padding:10px 14px;font-weight:700;font-size:13.5px;text-align:center;animation:pop .2s ease both;transition:opacity .3s,transform .3s}
 .toast.ok{background:#bbf7d0}.toast.err{background:#fecaca}
+#updateBar{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:95;background:var(--ink);color:#fff;border-radius:14px;padding:10px 12px 10px 16px;display:flex;gap:12px;align-items:center;font-weight:700;font-size:14px;box-shadow:4px 4px 0 var(--pink);width:max-content;max-width:94vw}
+#offlineBar{position:sticky;top:0;z-index:30;background:#fde68a;border-bottom:2px solid var(--ink);text-align:center;font-size:13px;font-weight:700;padding:6px 12px}
 footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
 
 .tpl-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;border:2px solid var(--ink);border-radius:10px;background:#eee}
@@ -227,9 +237,9 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
         <div class="samples" id="samples"></div>
       </div>
       <textarea id="prompt" rows="3" placeholder="e.g. Day four of indoor recess and the LEGO bin has formed a government"></textarea>
-      <div class="row-label"><span>Theme / Universe</span><button class="link" id="surpriseBtn">🎲 Surprise me</button></div>
+      <div class="row-label"><span>Theme / Universe</span><span style="display:flex;gap:14px"><button class="link" id="worldBtn">🌎 My World</button><button class="link" id="surpriseBtn">🎲 Surprise me</button></span></div>
       <div class="chips" id="themeChips"></div>
-      <input type="text" id="customTheme" class="hidden" placeholder="Any fandom, hobby, or universe (D&D, 90s nostalgia, cooking shows, robotics club…)">
+      <div id="customWrap" class="hidden" style="display:flex;gap:8px;margin-top:10px"><input type="text" id="customTheme" style="margin:0" placeholder="Any fandom, hobby, or universe (D&D, 90s nostalgia, cooking shows, robotics club…)"><button class="btn small" id="saveTheme" title="Save as a theme button">★ Save</button></div>
       <div class="gen-foot">
         <div>
           <div class="row-label"><span>Tone</span></div>
@@ -243,6 +253,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
     </div>
     <div class="results-head"><h3 id="resultsTitle">Starter memes</h3><span class="sub">Tap any meme to edit it</span></div>
     <div class="grid4" id="results"></div>
+    <div id="historyStrip" class="hidden"><div class="row-label" style="margin:0 0 8px"><span>🕘 Recent</span></div><div class="history" id="historyList"></div></div>
   </section>
 
   <!-- TEMPLATES -->
@@ -368,16 +379,17 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
   <div class="editor">
     <div class="editor-head">
       <h3 id="edTitle">Editor</h3>
-      <button class="btn small" id="edClose">✕ Close</button>
+      <div style="display:flex;gap:6px"><button class="btn small" id="edUndo" title="Undo (Ctrl+Z)">↶</button><button class="btn small" id="edRedo" title="Redo (Ctrl+Shift+Z)">↷</button><button class="btn small" id="edClose">✕ Close</button></div>
     </div>
     <div class="editor-body">
       <div class="stage">
         <canvas id="edCanvas"></canvas>
-        <p class="hint">Drag a caption to move it. Tap one to select it.</p>
+        <p class="hint">Drag to move · drag the blue corner to resize · Ctrl+Z to undo</p>
       </div>
       <div class="controls">
         <div class="seg"><span>Caption style</span><div><button class="segbtn on" id="modeOverlay">Classic overlay</button><button class="segbtn" id="modeBar">Top bar</button></div></div>
-        <div class="row-label" style="margin:2px 0 0"><span>Text boxes</span><button class="btn tiny" id="addLayer">+ Add text</button></div>
+        <div class="row-label" style="margin:2px 0 0"><span>Layers</span><span style="display:flex;gap:6px"><button class="btn tiny" id="addLayer">+ Text</button><button class="btn tiny" id="addEmoji">+ Emoji</button><label class="btn tiny">+ Image<input type="file" accept="image/*" id="addImage" hidden></label></span></div>
+        <div id="emojiPicker" class="emoji-grid hidden"></div>
         <div id="layers" class="stack"></div>
       </div>
     </div>
@@ -399,6 +411,18 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
   </div>
 </div>
 
+<!-- MY WORLD -->
+<div class="overlay hidden" id="world">
+  <div class="sheet key-box">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3>🌎 My World</h3><button class="btn small" id="worldClose">✕</button></div>
+    <p>Inside jokes, people, places, your job, your school mascot… The AI weaves these in when they fit the joke. Saved only in this browser.</p>
+    <textarea id="worldNotes" rows="5" placeholder="e.g. I teach PreK–2 STEAM. Our mascot is the Tigers. The copier on the 2nd floor is cursed. My dog is named Biscuit."></textarea>
+    <label class="toggle"><input type="checkbox" id="worldOn" checked><span>Use My World in memes</span></label>
+    <div><div class="row-label" style="margin:6px 0"><span>Saved themes</span></div><div class="chips" id="worldThemes"></div></div>
+    <button class="btn primary" id="worldSave">Save</button>
+  </div>
+</div>
+
 <!-- SETTINGS -->
 <div class="overlay hidden" id="settings">
   <div class="sheet key-box">
@@ -411,9 +435,12 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
       <button class="btn ghost" id="keyClear">Remove key</button>
     </div>
     <div id="keyDiag" class="stack hidden" style="font-size:13.5px;gap:6px"></div>
+    <p id="usageLine" style="font-size:12.5px;background:#f5f5f4"></p>
   </div>
 </div>
 
+<div id="updateBar" class="hidden"><span>✨ A new version of Meme Studio is ready.</span><button class="btn small yellow" id="updateBtn">Refresh</button></div>
+<div id="offlineBar" class="hidden">📴 You're offline. Your saved stuff and cached templates still work; AI needs internet.</div>
 <div id="toasts"></div>
 
 <script>
@@ -737,12 +764,91 @@ const SIMPSONS = [
     [["Top caption", .5, .1, .92, 32], ["Bottom caption", .5, .9, .92, 32]]]
 ].map(([id, name, ext, themes, vibe, z]) => ({ id, name, url: u36(id, ext), themes: [...SIMP, ...themes], vibe, zones: zs(z), curated: true, simpsons: true }));
 
+// Example captions per mapped template (one in-format example each) so the AI uses every format correctly.
+const EXAMPLES = {
+  "181913649": ["Doing the dishes right after dinner", "Letting them 'soak' for three days"],
+  "101470": ["I don't know how the stapler ended up in the freezer", "Aliens"],
+  "252600902": ["Wait, it's all just meetings that could've been emails?", "Always has been"],
+  "196652226": ["When the potluck sign-up sheet comes around", "Ight, imma head out"],
+  "178591752": ["Taking a nap", "Engaging in a brief horizontal productivity pause"],
+  "102156234": ["Just read the directions", "jUsT rEaD tHe DiReCtIoNs"],
+  "222403160": ["I am once again asking you to push in your chairs"],
+  "129242436": ["Cereal is a soup"],
+  "1035805": ["How do we save time?", "Longer meetings", "More forms", "Fewer meetings"],
+  "87743020": ["Go to bed", "One more episode", "Me at 11:58 PM"],
+  "112126428": ["A brand new hobby", "Me", "The three hobbies I already started"],
+  "93895088": ["Using a calendar", "Using a planner app", "Setting 14 alarms", "Remembering everything by vibes"],
+  "188390779": ["You ate my lunch from the fridge!", "Your name was on the bag, not the sandwich"],
+  "55311130": ["47 open tabs, 2% battery, 3 deadlines", "This is fine"],
+  "131940431": ["Start a new diet", "Buy healthy snacks", "Eat all the snacks at 10 PM", "Eat all the snacks at 10 PM"],
+  "91538330": ["Glitter", "Glitter everywhere"],
+  "247375501": ["Kids in 1995: walked uphill to school both ways", "Kids now: the Wi-Fi is slow, I can't go on"],
+  "148909805": ["Teacher: who wants to share first?", "Me:"],
+  "61579": ["One does not simply", "Eat just one chip"],
+  "217743513": ["Read the instructions", "Me, holding 25 cards"],
+  "124822590": ["Finishing my work", "Starting a new side project", "Me at 9 PM"],
+  "97984": ["The science fair volcano", "Worked a little too well"],
+  "438680": ["Maybe we could just wing the presen-", "WE MADE A PLAN"],
+  "61544": ["Remembered my password", "On the first try"],
+  "4087833": ["Me waiting", "For the IT ticket to be resolved"],
+  "80707627": ["Waiting for my food", "Still waiting for my food", "When the delivery says 'arriving soon' for an hour"],
+  "89370399": ["Can't be late to work", "If you never leave work"],
+  "135256802": ["Teachers", "Students", "Wishing it was Friday"],
+  "110163934": ["I bet he's thinking about other people", "Why does 'abbreviation' have so many letters?"],
+  "100777631": ["Me", "A slightly warm day in March", "Is this summer?"],
+  "155067746": ["Stays up until 2 AM with a 6 AM alarm", "Is tired the next day"],
+  "119139145": ["When someone says 'free pizza in the lounge'", "Me"],
+  "27813981": ["When the 'quick meeting'", "Hits the 90 minute mark"],
+  "61520": ["Not sure if hungry", "Or just bored"],
+  "216951317": ["Will work for coffee"],
+  "79132341": ["I'll do it tomorrow", "Tomorrow arrives", "Why do I always have so much to do?!"],
+  "226297822": ["Forgot to grade the quizzes", "Tomorrow is a snow day", "Indoor recess with 25 kids"],
+  "180190441": ["Pop", "Soda", "Corporate needs you to find the difference"],
+  "5496396": ["Here's to everyone who hit reply all", "Just to say thanks"],
+  "21735": ["Want to see my new shortcut?", "It's a dirt road"],
+  "61532": ["I don't always take naps", "But when I do, they last 4 hours"],
+  "61585": ["Finally gets a snow day", "It's a Saturday"],
+  "14371066": ["Clean your room, you must", "Shove everything in the closet, you will"],
+  "284929871": ["They don't know I already ate dessert first"],
+  "370867422": ["No snacks?", ""],
+  "309868304": ["I receive: your fries", "You receive: my company"],
+  "322841258": ["I'm starting my diet", "On Monday, right?", "On Monday, right?"],
+  "342785297": ["You eat cereal for breakfast", "I eat cereal for dinner", "We are not the same"],
+  "195515965": ["I'll do one more level", "It's only 11 PM", "I'll just sleep faster", "Alarm goes off in 2 hours"],
+  "123999232": ["Hitting snooze does not create more sleep"],
+  "252758727": ["Me", "My new hobby", "The guitar I bought last year"],
+  "84341851": ["Me: go to bed early", "Me inside: one more video"],
+  "405658": ["I tried fun once", "Didn't like it"],
+  "563423": ["Yeah, if you could just stay late tonight", "That would be great"],
+  "61527": ["Printer", "Y U no print?!"],
+  "61539": ["My coffee got cold", "While I was drinking my other coffee"],
+  "61546": ["Brace yourselves", "Holiday sweaters are coming"],
+  "101716": ["Yo dawg, I heard you like meetings", "So we scheduled a meeting about meetings"],
+  "61556": ["Typing 'Google' into Google", "To get to Google"],
+  "99683372": ["Asleep for: the 8 hours I could sleep", "Wide awake for: a 3 AM thought from 2009"],
+  "29617627": ["Look at me", "I am the substitute now"],
+  "259237855": ["When the 'urgent' email", "Is about the potluck"],
+  "175540452": ["When someone microwaves fish", "In the staff lounge"],
+  "101511": ["Can I borrow a pencil?", "For the fifth day in a row?"],
+  "16721465": ["When someone asks who wants to lead the committee", "Me:"],
+  "93160967": ["Am I so out of touch for not knowing the new slang?", "No, it's the children who are wrong"],
+  "139917843": ["Snow days should count as professional development"],
+  "60777140": ["I will not reply-all to the whole district"],
+  "72525473": ["Say the line, Bart!", "Is it Friday yet?", "YAAAY!"],
+  "64877458": ["Old man yells at phone update", "Where did my buttons go?"],
+  "152601039": ["How I sleep knowing tomorrow's lessons are already prepped", ""],
+  "21710292": ["Woohoo!", "Free donuts in the lounge"],
+  "15017232": ["When the teacher says 'any questions?'", "Me: I like turtles"],
+  "83337766": ["When you finally finish your homework", "And realize it was due yesterday"],
+  "197444410": ["Me pretending to work", "When the principal walks by"]
+};
+
 let TEMPLATES = [...CURATED.map(t => ({ ...t, curated: true, verified: true })), ...SIMPSONS.map(t => ({ ...t, verified: true })), ...MORE];
 const tplById = id => TEMPLATES.find(t => t.id === String(id));
 
 function layersFromTemplate(t, captions = []) { return t.zones.map((z, i) => ({ ...z, text: captions[i] != null ? String(captions[i]) : "" })); }
 async function specFromTemplate(t, captions) {
-  return { title: t.name, base: { kind: "image", src: t.url, img: await loadImg(t.url, t.name) }, layers: layersFromTemplate(t, captions), topBar: false };
+  return { title: t.name, tid: t.id, base: { kind: "image", src: t.url, img: await loadImg(t.url, t.name) }, layers: layersFromTemplate(t, captions), topBar: false };
 }
 const normName = n => String(n || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 async function loadMoreTemplates() {
@@ -773,6 +879,7 @@ async function loadMoreTemplates() {
       return { id: String(m.id), name: m.name, url: m.url, themes: th, vibe: `Classic "${m.name}" meme (${boxes} text boxes)`, zones, curated: false, verified: true };
     });
     TEMPLATES = [...TEMPLATES, ...extra];
+    applyCachedMaps();
     renderTemplates(); renderSlots();
   } catch (e) {}
 }
@@ -780,6 +887,48 @@ function fixTemplateUrl(oldUrl, newUrl) { const t = TEMPLATES.find(x => x.url ==
 function markBroken(url) {
   const t = TEMPLATES.find(x => x.url === url);
   if (t && !t.broken) { t.broken = true; $("#tplCount").textContent = `${TEMPLATES.filter(x => !x.broken).length} templates.`; }
+}
+
+
+
+/* ================= Auto-map text boxes (Gemini vision, cached per template) ================= */
+const MAP_KEY = "memeStudio.autoMaps.v1";
+const mapsGet = () => { try { return JSON.parse(localStorage.getItem(MAP_KEY) || "{}"); } catch (e) { return {}; } };
+const inflightMaps = new Map();
+function applyMap(t, m) {
+  if (!m || !Array.isArray(m.zones) || !m.zones.length) return false;
+  t.zones = m.zones; if (m.vibe) t.vibe = m.vibe; t.autoMapped = true; return true;
+}
+function applyCachedMaps() { const all = mapsGet(); TEMPLATES.forEach(t => { if (!t.curated && all[t.id]) applyMap(t, all[t.id]); }); }
+const needsMap = t => t && !t.curated && !t.autoMapped && !t.broken;
+function mapTemplate(t) {
+  if (!needsMap(t) || !hasAI()) return Promise.resolve(false);
+  if (inflightMaps.has(t.id)) return inflightMaps.get(t.id);
+  const p = (async () => {
+    const img = await loadImg(t.url, t.name);
+    if (img.isFallback) return false;
+    const cv = scaledCanvas(img, 640);
+    if (!taintCheck(cv)) return false;
+    const blob = await toBlob(cv, "image/jpeg", .85);
+    const n = t.zones.length;
+    const out = await askJSON(`This is the blank meme template "${t.name}" (it normally has ${n} text box${n > 1 ? "es" : ""}).
+1) In one sentence, describe how this meme is used online (the joke format).
+2) For each text box, in the order people normally fill them, give: a short role label, the center position x and y as fractions of the image (0 to 1), the width w as a fraction of image width, "style" ("dark" if the text sits on a white/light empty area like a sign or panel, otherwise "light" for white outlined meme text), and "size" ("s", "m" or "l").
+Put boxes where captions traditionally go: on blank areas, signs, labels, or over the relevant character/object.
+Reply with ONLY JSON: {"vibe":"...","boxes":[{"label":"...","x":0.5,"y":0.1,"w":0.9,"style":"light","size":"m"}]}`, { images: [blob] });
+    const boxes = (out.boxes || []).slice(0, 6).filter(b => b && Number.isFinite(+b.x) && Number.isFinite(+b.y));
+    if (!boxes.length) return false;
+    const zones = zs(boxes.map(b => [String(b.label || "Text").slice(0, 40), clamp(b.x, .05, .95), clamp(b.y, .04, .96), clamp(b.w || .8, .15, .95),
+      { s: 24, m: 30, l: 38 }[b.size] || 30, b.style === "dark" ? "dark" : "light"]));
+    const m = { zones, vibe: out.vibe ? String(out.vibe).slice(0, 200) : "" };
+    const all = mapsGet(); all[t.id] = m; try { localStorage.setItem(MAP_KEY, JSON.stringify(all)); } catch (e) {}
+    return applyMap(t, m);
+  })().catch(() => false).finally(() => inflightMaps.delete(t.id));
+  inflightMaps.set(t.id, p); return p;
+}
+function relayout(layers, zones) {
+  return zones.map((z, i) => ({ ...z, text: layers[i] ? layers[i].text : "" }))
+    .concat(layers.slice(zones.length).filter(l => (l.text || "").trim()));
 }
 
 /* ================= Renderer ================= */
@@ -800,9 +949,21 @@ function wrap(c, text, maxW) {
   return out;
 }
 const fontFor = (l, px) => `${WEIGHT[l.font] || "800"} ${px}px ${FONTS[l.font] || FONTS.clean}`;
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const IMG_LAYER = new Map();
+let onLayerImgReady = null;
+function layerImg(src) {
+  if (IMG_LAYER.has(src)) return IMG_LAYER.get(src);
+  IMG_LAYER.set(src, null);
+  const i = new Image(); i.onload = () => { IMG_LAYER.set(src, i); onLayerImgReady && onLayerImgReady(); }; i.src = src;
+  return null;
+}
+const preloadLayerImgs = layers => Promise.all(layers.filter(l => l.type === "image" && !IMG_LAYER.get(l.src)).map(l => new Promise(res => {
+  const i = new Image(); i.onload = () => { IMG_LAYER.set(l.src, i); res(); }; i.onerror = res; i.src = l.src;
+})));
 function renderMeme(cv, base, layers, topBar = false, sel = -1) {
   const [W, H] = baseSize(base), k = W / 720, c = cv.getContext("2d");
-  const head = topBar && layers[0] && layers[0].text.trim() ? layers[0] : null;
+  const head = topBar && layers[0] && (!layers[0].type || layers[0].type === "text") && (layers[0].text || "").trim() ? layers[0] : null;
   let barH = 0, barLines = [];
   const barPx = Math.round(34 * k);
   if (head) {
@@ -819,17 +980,32 @@ function renderMeme(cv, base, layers, topBar = false, sel = -1) {
     barLines.forEach((ln, j) => c.fillText(ln, 32 * k, 20 * k + j * barPx * 1.25));
     boxes[0] = { x: 0, y: 0, w: W, h: barH, fixed: true };
   }
+  const textCount = layers.filter(l => !l.type || l.type === "text").length;
   layers.forEach((l, i) => {
     if (i === 0 && topBar) return;
+    const cx = l.x * W, cy = barH + l.y * H;
+    if (l.type === "image") {
+      const im = layerImg(l.src);
+      const w = (l.w || .4) * W, h = im ? w * ih(im) / iw(im) : w * .75;
+      if (im) { c.save(); c.translate(cx, cy); if (l.rot) c.rotate(l.rot * Math.PI / 180); c.drawImage(im, -w / 2, -h / 2, w, h); c.restore(); }
+      boxes[i] = { x: cx - w / 2, y: cy - h / 2, w, h }; return;
+    }
+    if (l.type === "emoji") {
+      const px = Math.round((l.size || 120) * k);
+      c.save(); c.translate(cx, cy); if (l.rot) c.rotate(l.rot * Math.PI / 180);
+      c.font = `${px}px ${EMOJI_FONT}`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = "#000"; c.fillText(l.text || "😀", 0, 0); c.restore();
+      boxes[i] = { x: cx - px * .62, y: cy - px * .62, w: px * 1.24, h: px * 1.24 }; return;
+    }
     const txt = (l.text || "").trim(), raw = l.upper ? txt.toUpperCase() : txt;
     let px = Math.round((l.size || 36) * k);
-    const maxW = (l.w || .9) * W;
+    const maxW = (l.w || .9) * W, maxH = (l.h || (textCount >= 4 ? .24 : .34)) * H;
     c.font = fontFor(l, px);
     const words = raw.split(/\s+/);
     while (px > 12 && words.some(w => c.measureText(w).width > maxW)) { px -= 2; c.font = fontFor(l, px); }
-    const lines = raw ? wrap(c, raw, maxW) : [];
+    let lines = raw ? wrap(c, raw, maxW) : [];
+    while (px > 14 && lines.length * px * 1.12 > maxH) { px -= 2; c.font = fontFor(l, px); lines = wrap(c, raw, maxW); }
     const lh = px * 1.12, bh = Math.max(lines.length, 1) * lh;
-    const cx = l.x * W, cy = barH + l.y * H, top = cy - bh / 2;
+    const top = cy - bh / 2;
     c.textAlign = "center"; c.textBaseline = "middle"; c.lineJoin = "round"; c.miterLimit = 2;
     lines.forEach((ln, j) => {
       const y = top + lh * j + lh / 2;
@@ -840,15 +1016,18 @@ function renderMeme(cv, base, layers, topBar = false, sel = -1) {
     boxes[i] = { x: cx - tw / 2 - 12 * k, y: top - 8 * k, w: tw + 24 * k, h: bh + 16 * k };
   });
   if (sel >= 0 && boxes[sel] && !boxes[sel].fixed) {
-    const b = boxes[sel];
+    const b = boxes[sel], hs = 15 * k;
     c.save(); c.setLineDash([10 * k, 7 * k]); c.lineWidth = 3 * k;
     c.strokeStyle = "#fff"; c.strokeRect(b.x, b.y, b.w, b.h);
-    c.lineDashOffset = 10 * k; c.strokeStyle = "#3a86ff"; c.strokeRect(b.x, b.y, b.w, b.h); c.restore();
+    c.lineDashOffset = 10 * k; c.strokeStyle = "#3a86ff"; c.strokeRect(b.x, b.y, b.w, b.h);
+    c.setLineDash([]); c.fillStyle = "#3a86ff"; c.strokeStyle = "#fff"; c.lineWidth = 3 * k;
+    c.beginPath(); c.rect(b.x + b.w - hs, b.y + b.h - hs, hs * 2, hs * 2); c.fill(); c.stroke(); c.restore();
+    b.handle = { x: b.x + b.w + 0, y: b.y + b.h + 0, r: 30 * k };
   }
   return { boxes, W, H, barH };
 }
 function exportCanvas(spec) { const cv = document.createElement("canvas"); renderMeme(cv, spec.base, spec.layers, spec.topBar, -1); return cv; }
-const cloneSpec = s => ({ title: s.title, base: s.base, layers: s.layers.map(l => ({ ...l })), topBar: !!s.topBar });
+const cloneSpec = s => ({ title: s.title, tid: s.tid, ctx: s.ctx, base: s.base, layers: s.layers.map(l => ({ ...l })), topBar: !!s.topBar });
 
 /* ================= Gemini ================= */
 const KEY_STORE = "memeStudio.geminiKey";
@@ -913,6 +1092,22 @@ async function candidateModels(kind) {
   const full = found.filter(id => !/lite/.test(id));
   return uniq([...full.slice(0, 2), ...lites.slice(0, 2), ...full.slice(2, 3), ...fallback]).slice(0, 7);
 }
+
+/* Quota awareness: count today's requests, rest models that hit their limits. */
+const USAGE_KEY = "memeStudio.usage.v1";
+const today = () => new Date().toLocaleDateString("en-CA");
+function usageGet() { try { const u = JSON.parse(localStorage.getItem(USAGE_KEY) || "{}"); return u.day === today() ? { cool: {}, byModel: {}, ...u } : { day: today(), count: 0, byModel: {}, cool: u.cool || {} }; } catch (e) { return { day: today(), count: 0, byModel: {}, cool: {} }; } }
+function usageSave(u) { try { localStorage.setItem(USAGE_KEY, JSON.stringify(u)); } catch (e) {} }
+function noteRequest(model) { const u = usageGet(); u.count = (u.count || 0) + 1; u.byModel[model] = (u.byModel[model] || 0) + 1; usageSave(u); }
+function noteQuota(model, msg) {
+  const u = usageGet();
+  const daily = /day|daily|PerDay/i.test(msg || "");
+  const until = daily ? new Date(new Date().setHours(24, 5, 0, 0)).getTime() : Date.now() + 90 * 1000;
+  u.cool[model] = until; usageSave(u);
+}
+const coolingDown = model => (usageGet().cool[model] || 0) > Date.now();
+function orderByQuota(list) { return [...list.filter(m => !coolingDown(m)), ...list.filter(m => coolingDown(m))]; }
+
 const noThinkCfg = new Set();
 const GOOD_MODEL_KEY = "memeStudio.goodModel";
 const goodModel = () => { try { return localStorage.getItem(GOOD_MODEL_KEY) || ""; } catch (e) { return ""; } };
@@ -921,7 +1116,7 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
   const key = getKey();
   if (!key) { openSettings(); throw { code: "nokey", message: "No API key yet." }; }
   let last;
-  const list = only ? [only] : uniq([goodModel(), ...(await candidateModels("text"))]);
+  const list = only ? [only] : orderByQuota(uniq([goodModel(), ...(await candidateModels("text"))]));
   for (const model of list) {
     const t0 = Date.now();
     try {
@@ -930,6 +1125,7 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
       const lowThink = /gemini-(3|4)/.test(model) && !noThinkCfg.has(model);
       if (lowThink) body.generationConfig.thinkingConfig = { thinkingLevel: "low" };
       onAttempt && onAttempt(model, "trying");
+      noteRequest(model);
       const r = await tfetch(`${GEM}/models/${model}:generateContent`,
         { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body) }, timeoutMs);
       if (!r.ok) {
@@ -938,7 +1134,7 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
         const e = gemErr(r.status, txt);
         if (e.code === "badkey") { toast(e.message, "err"); throw e; }
         if (r.status >= 500) e.message = `${model} is busy right now (${r.status}).`;
-        if (r.status === 429) e.message = `${model}: ${e.message}.`;
+        if (r.status === 429) { e.message = `${model}: ${e.message}.`; noteQuota(model, txt); if (goodModel() === model) { try { localStorage.removeItem(GOOD_MODEL_KEY); } catch (x) {} } }
         onAttempt && onAttempt(model, "fail", e.message, Date.now() - t0);
         last = e; continue;
       }
@@ -980,14 +1176,15 @@ async function geminiImage(prompt) {
   const key = getKey();
   if (!key) { openSettings(); throw { code: "nokey", message: "No API key yet." }; }
   let last;
-  for (const m of await candidateModels("image")) {
+  for (const m of orderByQuota(await candidateModels("image"))) {
     for (const modalities of [["IMAGE"], ["TEXT", "IMAGE"]]) {
       try {
+        noteRequest(m);
         const r = await tfetch(`${GEM}/models/${m}:generateContent`, {
           method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: modalities } })
         }, 60000);
-        if (!r.ok) { last = gemErr(r.status, await r.text()); if (last.code === "badkey") { toast(last.message, "err"); throw last; } if (r.status === 404 || r.status === 429) break; continue; }
+        if (!r.ok) { last = gemErr(r.status, await r.text()); if (last.code === "badkey") { toast(last.message, "err"); throw last; } if (r.status === 429) noteQuota(m, last.message); if (r.status === 404 || r.status === 429) break; continue; }
         const d = await r.json();
         const part = (d?.candidates?.[0]?.content?.parts || []).find(p => p.inlineData);
         if (part) { lastModel = m; return `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`; }
@@ -1003,7 +1200,11 @@ const safety = () => $("#gRated").checked
   : "AUDIENCE: Adults, but keep it good-natured. No slurs or hateful content.";
 
 /* Settings modal */
-function openSettings() { $("#keyInput").value = getKey(); openOverlay("#settings"); setTimeout(() => $("#keyInput").focus(), 50); }
+function renderUsage() {
+  const u = usageGet(), cool = Object.entries(u.cool || {}).filter(([, t]) => t > Date.now()).map(([m]) => m);
+  $("#usageLine").textContent = `AI requests today: ${u.count || 0}${u.goodModel ? "" : ""}. ${cool.length ? `Resting (hit a limit): ${cool.join(", ")}.` : "No models are resting."} Last model that worked: ${goodModel() || "none yet"}.`;
+}
+function openSettings() { renderUsage(); $("#keyInput").value = getKey(); openOverlay("#settings"); setTimeout(() => $("#keyInput").focus(), 50); }
 $("#aiChip").onclick = openSettings;
 $("#settingsClose").onclick = () => closeOverlay("#settings");
 $("#keySave").onclick = () => {
@@ -1036,7 +1237,8 @@ $("#keyTest").onclick = async () => {
         rows[m].textContent = st === "trying" ? `3. Trying ${m}…` : st === "ok" ? `✅ 3. ${m} replied in ${(ms / 1000).toFixed(1)}s. AI is ready!` : `⏭️ ${msg} Trying the next one…`;
       } }).catch(e => { line(`❌ ${e && e.message ? e.message : "No reply."}`); e.shown = true; throw e; }));
     if (out.ok) toast(`It works! Using ${lastModel}.`, "ok");
-  } catch (e) { if (!e || !e.shown) l.textContent = `❌ 1. ${e && e.message ? e.message : "Couldn't reach Google."} (${secs(t0)})`; }
+    renderUsage();
+  } catch (e) { renderUsage(); if (!e || !e.shown) l.textContent = `❌ 1. ${e && e.message ? e.message : "Couldn't reach Google."} (${secs(t0)})`; }
   busy(btn, false);
 };
 
@@ -1071,35 +1273,80 @@ $("#sheetDownload").onclick = () => downloadURL($("#sheetImg").src, sheetFile);
 function openOverlay(id) { $(id).classList.remove("hidden"); document.body.classList.add("noscroll"); }
 function closeOverlay(id) { $(id).classList.add("hidden"); if (!$$(".overlay:not(.hidden)").length) document.body.classList.remove("noscroll"); }
 $("#sheetClose").onclick = () => closeOverlay("#sheet");
-["sheet", "settings", "editor"].forEach(id => $("#" + id).addEventListener("click", e => { if (e.target.id === id) closeOverlay("#" + id); }));
+["sheet", "settings", "editor", "world"].forEach(id => $("#" + id).addEventListener("click", e => { if (e.target.id === id) closeOverlay("#" + id); }));
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   const open = $$(".overlay:not(.hidden)"); if (open.length) closeOverlay("#" + open[open.length - 1].id);
 });
 
-/* ================= Vault ================= */
-const VKEY = "memeStudio.vault.v2";
-function vaultRead() { try { return JSON.parse(localStorage.getItem(VKEY) || "[]"); } catch (e) { return []; } }
-function vaultWrite(a) {
-  try { localStorage.setItem(VKEY, JSON.stringify(a)); return true; }
-  catch (e) { toast("The vault is full on this device. Export a backup, then delete a few.", "err"); return false; }
+/* ================= Storage (IndexedDB, with localStorage fallback) ================= */
+const DB = (() => {
+  let p;
+  const open = () => p || (p = new Promise((res, rej) => {
+    if (!window.indexedDB) return rej(new Error("no idb"));
+    const r = indexedDB.open("memeStudio", 1);
+    r.onupgradeneeded = () => { const db = r.result; ["vault", "history"].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: "id" }); }); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (store, mode, fn) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction(store, mode), req = fn(t.objectStore(store)); let out;
+      if (req) req.onsuccess = () => { out = req.result; };
+      t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  };
+  return { all: st => tx(st, "readonly", o => o.getAll()), put: (st, v) => tx(st, "readwrite", o => o.put(v)), del: (st, k) => tx(st, "readwrite", o => o.delete(k)) };
+})();
+const LS_FALLBACK = { vault: "memeStudio.vault.v2", history: "memeStudio.history.v1" };
+const lsAll = st => { try { return JSON.parse(localStorage.getItem(LS_FALLBACK[st]) || "[]"); } catch (e) { return []; } };
+const lsSet = (st, a) => { try { localStorage.setItem(LS_FALLBACK[st], JSON.stringify(a)); return true; } catch (e) { return false; } };
+let useLS = false;
+async function storeAll(st) {
+  if (!useLS) { try { return (await DB.all(st)).sort((x, y) => String(y.created).localeCompare(String(x.created))); } catch (e) { useLS = true; } }
+  return lsAll(st);
 }
-function updateVaultCount() { $("#vaultCount").textContent = vaultRead().length; }
-function addToVault(spec) {
+async function storePut(st, item, cap) {
+  if (!useLS) {
+    try {
+      await DB.put(st, item);
+      const all = await storeAll(st);
+      for (const old of all.slice(cap)) await DB.del(st, old.id);
+      return true;
+    } catch (e) { useLS = true; }
+  }
+  const a = [item, ...lsAll(st).filter(x => x.id !== item.id)].slice(0, Math.min(cap, 40));
+  if (lsSet(st, a)) return true;
+  toast("Storage is full on this device. Export a backup, then delete a few.", "err"); return false;
+}
+async function storeDel(st, id) { if (!useLS) { try { await DB.del(st, id); return; } catch (e) { useLS = true; } } lsSet(st, lsAll(st).filter(x => x.id !== id)); }
+async function migrateVault() {
+  const old = lsAll("vault"); if (!old.length) return;
+  try { for (const it of old) await DB.put("vault", it); localStorage.removeItem(LS_FALLBACK.vault); } catch (e) { useLS = true; }
+}
+
+/* ================= Vault ================= */
+const VAULT_CAP = 300;
+async function updateVaultCount() { $("#vaultCount").textContent = (await storeAll("vault")).length; }
+const specToStored = spec => ({ title: spec.title, tid: spec.tid || null, src: spec.base.src, layers: spec.layers.map(l => ({ ...l })), topBar: !!spec.topBar });
+async function addToVault(spec) {
   const cv = exportCanvas(spec);
   if (!taintCheck(cv)) { toast("That one can't be saved.", "err"); return false; }
-  const thumb = scaledCanvas(cv, 520).toDataURL("image/jpeg", .8);
-  const a = vaultRead();
-  a.unshift({ id: uid(), title: spec.title, created: new Date().toISOString(), thumb,
-    spec: { title: spec.title, src: spec.base.src, layers: spec.layers.map(l => ({ ...l })), topBar: !!spec.topBar } });
-  if (a.length > 50) a.length = 50;
-  if (vaultWrite(a)) { toast("Saved to your vault", "ok"); updateVaultCount(); if (!$("#view-vault").classList.contains("hidden")) renderVault(); return true; }
+  const item = { id: uid(), title: spec.title, created: new Date().toISOString(), thumb: scaledCanvas(cv, 520).toDataURL("image/jpeg", .8), spec: specToStored(spec) };
+  if (await storePut("vault", item, VAULT_CAP)) {
+    toast("Saved to your vault", "ok"); updateVaultCount();
+    if (!$("#view-vault").classList.contains("hidden")) renderVault();
+    return true;
+  }
   return false;
 }
-async function hydrate(s) { return { title: s.title, base: { kind: "image", src: s.src, img: await loadImg(s.src, s.title) }, layers: s.layers.map(l => ({ ...l })), topBar: !!s.topBar }; }
-function renderVault() {
-  const grid = $("#vaultGrid"), items = vaultRead();
-  updateVaultCount();
+async function hydrate(s) {
+  await preloadLayerImgs(s.layers || []);
+  return { title: s.title, tid: s.tid || undefined, base: { kind: "image", src: s.src, img: await loadImg(s.src, s.title) }, layers: s.layers.map(l => ({ ...l })), topBar: !!s.topBar };
+}
+async function renderVault() {
+  const grid = $("#vaultGrid"), items = await storeAll("vault");
+  $("#vaultCount").textContent = items.length;
   if (!items.length) {
     grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div>🗄️</div><h3>Nothing saved yet</h3><p class="sub">Tap ☆ on any meme or use "Save to Vault" in the editor.</p></div>`;
     return;
@@ -1115,7 +1362,7 @@ function renderVault() {
     el.addEventListener("click", async e => {
       const a = e.target.closest("[data-a]")?.dataset.a || (e.target.tagName === "IMG" ? "edit" : null);
       if (!a) return;
-      if (a === "del") { vaultWrite(vaultRead().filter(x => x.id !== item.id)); renderVault(); toast("Removed from vault"); return; }
+      if (a === "del") { await storeDel("vault", item.id); renderVault(); toast("Removed from vault"); return; }
       const spec = await hydrate(item.spec);
       if (a === "edit") openEditor(spec);
       if (a === "copy") copyCanvas(exportCanvas(spec));
@@ -1124,10 +1371,10 @@ function renderVault() {
     grid.appendChild(el);
   });
 }
-$("#vaultExport").onclick = () => {
-  const items = vaultRead();
+$("#vaultExport").onclick = async () => {
+  const items = await storeAll("vault");
   if (!items.length) return toast("The vault is empty, so there's nothing to export yet.");
-  const blob = new Blob([JSON.stringify({ app: "meme-studio", version: 2, items })], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ app: "meme-studio", version: 3, items })], { type: "application/json" });
   const url = URL.createObjectURL(blob); downloadURL(url, `meme-vault-backup-${new Date().toISOString().slice(0, 10)}.json`);
   setTimeout(() => URL.revokeObjectURL(url), 2000); toast("Backup downloaded", "ok");
 };
@@ -1135,10 +1382,10 @@ $("#vaultImport").onchange = async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   try {
     const parsed = JSON.parse(await f.text());
-    const items = (Array.isArray(parsed) ? parsed : parsed.items || []).filter(x => x && x.spec && x.spec.src && x.thumb);
+    const items = (Array.isArray(parsed) ? parsed : parsed.items || []).filter(x => x && x.id && x.spec && x.spec.src && x.thumb);
     if (!items.length) throw new Error("empty");
-    const have = new Set(vaultRead().map(x => x.id));
-    if (vaultWrite([...items.filter(x => !have.has(x.id)), ...vaultRead()].slice(0, 50))) { renderVault(); toast(`Imported ${items.length} meme${items.length === 1 ? "" : "s"}`, "ok"); }
+    for (const it of items) await storePut("vault", it, VAULT_CAP);
+    renderVault(); toast(`Imported ${items.length} meme${items.length === 1 ? "" : "s"}`, "ok");
   } catch (err) { toast("That file isn't a Meme Studio backup.", "err"); }
 };
 
@@ -1148,17 +1395,58 @@ function memeCard(spec) {
   el.className = "meme-card";
   el.innerHTML = `<div class="mc-top"><span>${esc(spec.title)}</span><button class="icon-btn" data-a="vault" title="Save to vault">☆</button></div>
     <div class="mc-canvas"><canvas></canvas></div>
-    <div class="mc-actions"><button class="btn" data-a="edit">✏️ Edit</button><button class="btn" data-a="copy">📋 Copy</button><button class="btn green" data-a="save">⬇️ Save</button></div>`;
+    <div class="mc-actions"><button class="btn" data-a="edit">✏️ Edit</button><button class="btn" data-a="copy">📋 Copy</button><button class="btn green" data-a="save">⬇️ Save</button></div>
+    ${spec.ctx ? `<div class="mc-actions remix"><button class="btn" data-a="take">🔁 New take</button><button class="btn" data-a="swap">🔀 Swap template</button></div>` : ""}`;
   renderMeme($("canvas", el), spec.base, spec.layers, spec.topBar);
-  el.addEventListener("click", e => {
+  el._spec = spec;
+  el.addEventListener("click", async e => {
     const btn = e.target.closest("[data-a]");
     const a = btn?.dataset.a || (e.target.tagName === "CANVAS" ? "edit" : null);
     if (a === "edit") openEditor(cloneSpec(spec));
     if (a === "copy") copyCanvas(exportCanvas(spec));
     if (a === "save") saveCanvas(exportCanvas(spec), spec.title);
-    if (a === "vault" && addToVault(spec)) { btn.textContent = "★"; btn.classList.add("starred"); }
+    if (a === "vault" && await addToVault(spec)) { btn.textContent = "★"; btn.classList.add("starred"); }
+    if (a === "take" || a === "swap") remixCard(el, spec, a, btn);
   });
   return el;
+}
+async function remixCard(el, spec, mode, btn) {
+  if (!hasAI()) return openSettings();
+  const t = tplById(spec.tid); const ctx = spec.ctx;
+  busy(btn, true, "⏳");
+  try {
+    const current = JSON.stringify(spec.layers.map(l => l.text));
+    let prompt;
+    if (mode === "take") {
+      prompt = `You are a top meme writer. Rewrite this meme with a completely DIFFERENT joke, same template.
+SITUATION: "${ctx.situation}"  THEME: ${ctx.theme}  TONE: ${tone}
+${myWorldText()}${safety()}
+TEMPLATE:
+${catalogLines([t])}
+CURRENT CAPTIONS (don't reuse this angle): ${current}
+Brainstorm 3 alternatives, score each 1 to 10, return them all.
+${RULES}
+Reply with ONLY JSON: {"candidates":[{"templateId":"${t.id}","captions":["..."],"score":7}]}`;
+    } else {
+      const pool = templatePool(ctx.theme).filter(x => x.id !== t.id);
+      prompt = `You are a top meme writer. Re-tell this same joke using a DIFFERENT template that fits it better or funnier.
+SITUATION: "${ctx.situation}"  THEME: ${ctx.theme}  TONE: ${tone}
+${myWorldText()}${safety()}
+THE JOKE (currently on "${t.name}"): ${current}
+CATALOG:
+${catalogLines(pool)}
+Brainstorm 3 options on different templates, score each 1 to 10, return them all.
+${RULES}
+Reply with ONLY JSON: {"candidates":[{"templateId":"...","captions":["..."],"score":7}]}`;
+    }
+    const out = await askJSON(prompt);
+    let best = validMemes((out.candidates || []).filter(c => mode === "take" ? String(c.templateId) === t.id : String(c.templateId) !== t.id), 1);
+    if (!best) throw { message: "Gemini didn't return a usable option. Try again." };
+    const next = await specFromTemplate(best[0].t, best[0].captions);
+    next.ctx = ctx;
+    const card = memeCard(next); el.replaceWith(card);
+    pushHistoryFromGrid();
+  } catch (e) { busy(btn, false); if (!e || !["badkey", "nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't remix that one.", "err"); }
 }
 
 /* ================= Generate ================= */
@@ -1217,13 +1505,36 @@ function pickSurprise(th) {
 let theme = "All", tone = "Relatable";
 $("#samples").innerHTML = SAMPLES.map(([l, p]) => `<button class="sample" data-p="${esc(p)}">${l}</button>`).join("");
 $("#samples").onclick = e => { const b = e.target.closest(".sample"); if (b) { $("#prompt").value = b.dataset.p; $("#prompt").focus(); } };
-$("#themeChips").innerHTML = THEMES.map(([v, l]) => `<button class="pill${v === theme ? " on" : ""}" data-v="${esc(v)}">${l}</button>`).join("");
+function renderThemeChips() {
+  const saved = worldGet().themes.map(n => [n, "⭐ " + n]);
+  const list = [...THEMES.slice(0, -1), ...saved, THEMES[THEMES.length - 1]];
+  $("#themeChips").innerHTML = list.map(([v, l]) => `<button class="pill${v === theme ? " on" : ""}" data-v="${esc(v)}">${esc(l)}</button>`).join("");
+}
+renderThemeChips();
 $("#themeChips").onclick = e => {
   const b = e.target.closest(".pill"); if (!b) return;
   theme = b.dataset.v; $$(".pill", $("#themeChips")).forEach(x => x.classList.toggle("on", x === b));
-  $("#customTheme").classList.toggle("hidden", theme !== "Custom"); if (theme === "Custom") $("#customTheme").focus();
+  $("#customWrap").classList.toggle("hidden", theme !== "Custom"); if (theme === "Custom") $("#customTheme").focus();
   if (CATS.includes(theme)) { cat = theme; renderCats(); renderTemplates(); }
 };
+$("#saveTheme").onclick = () => {
+  const n = $("#customTheme").value.trim().slice(0, 40);
+  if (!n) return toast("Type a theme first.", "err");
+  const w = worldGet(); if (!w.themes.includes(n)) w.themes.push(n); worldSet(w);
+  theme = n; $("#customWrap").classList.add("hidden"); renderThemeChips(); toast(`Saved "${n}" as a theme`, "ok");
+};
+function renderWorldThemes() {
+  const w = worldGet();
+  $("#worldThemes").innerHTML = w.themes.length ? w.themes.map((n, i) => `<button class="pill" data-i="${i}" title="Remove">⭐ ${esc(n)} ✕</button>`).join("") : `<span class="sub">None yet. Pick ✨ Custom, type a theme, and tap ★ Save.</span>`;
+}
+$("#worldThemes").onclick = e => {
+  const b = e.target.closest("[data-i]"); if (!b) return;
+  const w = worldGet(); const [gone] = w.themes.splice(+b.dataset.i, 1); worldSet(w);
+  if (theme === gone) theme = "All"; renderWorldThemes(); renderThemeChips();
+};
+$("#worldBtn").onclick = () => { const w = worldGet(); $("#worldNotes").value = w.notes; $("#worldOn").checked = w.on; renderWorldThemes(); openOverlay("#world"); };
+$("#worldClose").onclick = () => closeOverlay("#world");
+$("#worldSave").onclick = () => { const w = worldGet(); w.notes = $("#worldNotes").value.trim(); w.on = $("#worldOn").checked; worldSet(w); closeOverlay("#world"); toast("My World saved", "ok"); };
 $("#toneChips").innerHTML = TONES.map(t => `<button class="pill tone${t === tone ? " on" : ""}" data-v="${esc(t)}">${t}</button>`).join("");
 $("#toneChips").onclick = e => { const b = e.target.closest(".pill"); if (!b) return; tone = b.dataset.v; $$(".pill", $("#toneChips")).forEach(x => x.classList.toggle("on", x === b)); };
 const themeLabel = () => theme === "Custom" ? ($("#customTheme").value.trim() || "Pop culture") : theme;
@@ -1242,28 +1553,47 @@ function templatePool(th) {
   const seen = new Set();
   return pool.filter(t => !seen.has(t.id) && seen.add(t.id)).slice(0, 60);
 }
+function catalogLines(pool) {
+  return pool.map(t => `- id "${t.id}" | ${t.name} | ${t.vibe} | ${t.zones.length} box${t.zones.length > 1 ? "es" : ""}: [${t.zones.map(z => z.label).join(" | ")}]${EXAMPLES[t.id] ? ` | example: ${JSON.stringify(EXAMPLES[t.id])}` : ""}`).join("\n");
+}
+const RULES = `RULES:
+- Captions array length must equal the template's box count, in the listed order. Use "" for a box that should stay empty.
+- Use each template the way it is actually used online (the examples show the format; never copy them).
+- Each box under 12 words. Land the punchline in the last box. Be specific and surprising, not generic.
+- No em dashes. No hashtags. Don't name real people.`;
 function genPrompt(situation, th, pool, surprise = false) {
-  const cat = pool.map(t => `- id "${t.id}" | ${t.name} | ${t.vibe} | ${t.zones.length} box${t.zones.length > 1 ? "es" : ""}: [${t.zones.map(z => z.label).join(" | ")}]`).join("\n");
-  return `You are an expert internet meme writer who knows exactly how each classic meme template is used. Make 4 memes about the situation below, each with a DIFFERENT template from the catalog. Choose templates whose real-world usage fits the joke.
+  return `You are a top internet meme writer who knows exactly how each classic meme template is used.
 
 ${surprise ? `SITUATION: Invent ONE fresh, specific, funny, relatable situation that fits the theme below (one sentence, under 20 words). Make it different from these recent ones: ${JSON.stringify(recentSurprises.slice(-6))}. Return it in "situation".` : `SITUATION: "${situation}"`}
 THEME / UNIVERSE: ${th === "All" ? "A versatile mix of classic formats." : `${th}. Prefer templates tagged for it and work in its tropes and references.`}
 TONE: ${tone}
-${safety()}
+${myWorldText()}${safety()}
 
-CATALOG (captions array must have exactly as many strings as the template has boxes, in the order listed):
-${cat}
+PROCESS: Brainstorm 8 candidate memes, each a DIFFERENT comedic angle on the situation (no template more than twice). Then honestly score each candidate 1 to 10 for how funny it is and how well the joke fits that template's real usage.
 
-RULES: Each box under 12 words. Land the punchline in the last box. Be specific and surprising. No em dashes. No hashtags.
+CATALOG:
+${catalogLines(pool)}
 
-Reply with ONLY JSON: {${surprise ? '"situation":"...",' : ""}"memes":[{"templateId":"...","captions":["..."]}]}`;
+${RULES}
+
+Reply with ONLY JSON: {${surprise ? '"situation":"...",' : ""}"candidates":[{"templateId":"...","captions":["..."],"score":7}]}`;
 }
-function validMemes(arr) {
+function validMemes(arr, want = 4) {
   if (!Array.isArray(arr)) return null;
   const seen = new Set();
-  const out = arr.filter(m => m && tplById(m.templateId) && Array.isArray(m.captions) && !seen.has(String(m.templateId)) && seen.add(String(m.templateId)))
-    .slice(0, 4).map(m => ({ t: tplById(m.templateId), captions: m.captions.map(x => noDash(x).slice(0, 160)) }));
+  const out = arr.filter(m => m && tplById(m.templateId) && Array.isArray(m.captions))
+    .map((m, i) => ({ ...m, _s: Number(m.score) || 0, _i: i }))
+    .sort((a, b) => b._s - a._s || a._i - b._i)
+    .filter(m => !seen.has(String(m.templateId)) && seen.add(String(m.templateId)))
+    .slice(0, want).map(m => ({ t: tplById(m.templateId), captions: m.captions.map(x => noDash(x).slice(0, 160)) }));
   return out.length ? out : null;
+}
+const WORLD_KEY = "memeStudio.world.v1";
+function worldGet() { try { return { notes: "", on: true, themes: [], ...JSON.parse(localStorage.getItem(WORLD_KEY) || "{}") }; } catch (e) { return { notes: "", on: true, themes: [] }; } }
+function worldSet(w) { try { localStorage.setItem(WORLD_KEY, JSON.stringify(w)); } catch (e) { toast("This browser won't save settings.", "err"); } }
+function myWorldText() {
+  const w = worldGet(); const n = (w.notes || "").trim();
+  return w.on && n ? `PERSONAL CONTEXT about the user (weave in only when it genuinely makes a joke better; never force it; keep it kind): ${n.slice(0, 800)}\n` : "";
 }
 function fallbackMemes(p, th) {
   const s = noDash(p).slice(0, 70), T = id => tplById(id);
@@ -1274,10 +1604,16 @@ function fallbackMemes(p, th) {
   return [{ t: T("55311130"), captions: [s, "This is fine"] }, { t: T("129242436"), captions: [s] },
     { t: T("181913649"), captions: ["Handling it like an adult", s] }, { t: T("196652226"), captions: [s, "Ight imma head out"] }];
 }
-async function renderResults(list) {
+async function renderResults(list, ctx = null) {
   const g = $("#results");
   const specs = await Promise.all(list.map(m => specFromTemplate(m.t, m.captions)));
-  g.innerHTML = ""; specs.forEach(s => g.appendChild(memeCard(s)));
+  specs.forEach(s => { if (ctx) s.ctx = ctx; });
+  g.innerHTML = "";
+  specs.forEach(s => {
+    const card = memeCard(s); g.appendChild(card);
+    const t = tplById(s.tid);
+    if (needsMap(t)) mapTemplate(t).then(ok => { if (ok && card.isConnected) { s.layers = relayout(s.layers, t.zones); card.replaceWith(memeCard(s)); } });
+  });
 }
 async function generate({ surprise = false } = {}) {
   let p = $("#prompt").value.trim();
@@ -1291,13 +1627,14 @@ async function generate({ surprise = false } = {}) {
   $("#resultsTitle").textContent = "Matching templates & writing punchlines…";
   let memes = null;
   let aiErr = null;
-  if (hasAI()) { try { const out = await askJSON(genPrompt(p, th, templatePool(th), surprise)); memes = validMemes(out.memes);
+  if (hasAI()) { try { const out = await askJSON(genPrompt(p, th, templatePool(th), surprise)); memes = validMemes(out.candidates || out.memes);
     if (surprise) { p = noDash(out.situation || "").slice(0, 200) || pickSurprise(th); if (out.situation) { recentSurprises.push(p); if (recentSurprises.length > 6) recentSurprises.shift(); } $("#prompt").value = p; } if (!memes) aiErr = { message: "Gemini picked templates that don't exist." }; } catch (e) { aiErr = e; } }
   const usedAI = !!memes;
   if (surprise && !$("#prompt").value.trim()) { p = pickSurprise(th); $("#prompt").value = p; }
   $("#prompt").placeholder = "e.g. Day four of indoor recess and the LEGO bin has formed a government";
   if (!memes) memes = fallbackMemes(p, th);
-  await renderResults(memes);
+  await renderResults(memes, { situation: p, theme: th });
+  pushHistoryFromGrid();
   $("#resultsTitle").textContent = usedAI ? `Fresh memes · ${th === "All" ? tone : th + " · " + tone}` : "Quick memes (instant mode)";
   toast(usedAI ? "4 fresh memes, hot off the press!" : hasAI() ? `Quick memes instead. ${aiErr && aiErr.message ? aiErr.message : "AI didn't answer."}` : "Instant mode. Add a Gemini key for AI captions.", usedAI ? "ok" : "");
   busy(btn, false);
@@ -1317,9 +1654,9 @@ function renderTemplates() {
   const list = TEMPLATES.filter(t => !t.broken && (cat === "All" || t.themes.includes(cat)) && (!q || (t.name + " " + t.vibe).toLowerCase().includes(q)));
   $("#tplCount").textContent = `${TEMPLATES.filter(x => !x.broken).length} templates.`;
   $("#tplGrid").innerHTML = list.length ? list.map(t => `<div class="meme-card tpl-card" data-id="${esc(t.id)}">
-      <img src="${esc(t.url)}" alt="${esc(t.name)}" loading="lazy">
+      <img src="${esc(t.url)}" alt="${esc(t.name)}" loading="lazy" crossorigin="anonymous">
       <div class="mc-top"><span>${esc(t.name)}</span></div>
-      <div class="mc-meta">${t.zones.length} text box${t.zones.length === 1 ? "" : "es"}${t.simpsons ? " · 🍩" : t.curated ? " · mapped" : ""}</div></div>`).join("")
+      <div class="mc-meta">${t.zones.length} text box${t.zones.length === 1 ? "" : "es"}${t.simpsons ? " · 🍩" : t.curated ? " · mapped" : t.autoMapped ? " · ✨ auto" : ""}</div></div>`).join("")
     : `<p class="sub">No templates match. Try clearing the search or picking All.</p>`;
   $$("#tplGrid img").forEach(img => img.addEventListener("error", () => {
     const src = img.getAttribute("src");
@@ -1386,7 +1723,7 @@ function renderSlots() {
     el.className = "slot";
     el.innerHTML = `<div class="slot-head"><span>Panel ${i + 1}</span><label class="btn tiny">📁 Upload<input type="file" accept="image/*" hidden></label></div>
       <select title="Template">${isTpl ? "" : `<option value="">Your photo</option>`}${TEMPLATES.filter(t => !t.broken).map(t => `<option value="${esc(t.url)}"${t.url === p.src ? " selected" : ""}>${esc(t.name)}</option>`).join("")}</select>
-      <div class="slot-prev" style="background-image:url('${p.src}')"></div>
+      <div class="slot-prev"><img src="${esc(p.src)}" alt="" crossorigin="anonymous" style="width:100%;height:100%;object-fit:cover"></div>
       <input type="text" value="${esc(p.caption)}" placeholder="Panel ${i + 1} caption">`;
     $("select", el).onchange = e => { if (e.target.value) { p.src = e.target.value; renderSlots(); } };
     $("input[type=file]", el).onchange = async e => { const f = e.target.files[0]; if (!f) return; try { p.src = await fileToSrc(f); renderSlots(); } catch (err) { toast("Couldn't read that image.", "err"); } };
@@ -1463,19 +1800,54 @@ $("#sceneSave").onclick = () => sceneSpec && saveCanvas(exportCanvas(sceneSpec),
 $("#sceneVault").onclick = () => sceneSpec && addToVault(sceneSpec);
 
 /* ================= Editor ================= */
-const ED = { spec: null, sel: -1, info: null, drag: null };
+const ED = { spec: null, sel: -1, info: null, drag: null, undo: [], redo: [] };
 const edCanvas = $("#edCanvas"), layersEl = $("#layers");
+onLayerImgReady = () => { if (ED.spec && !$("#editor").classList.contains("hidden")) redraw(); };
+const isText = l => !l.type || l.type === "text";
 function openEditor(spec) {
-  ED.spec = spec;
+  ED.spec = spec; ED.undo = []; ED.redo = []; syncUndoBtns();
+  const t = spec.tid && tplById(spec.tid);
+  if (needsMap(t) && hasAI()) {
+    toast("✨ Finding where the text goes on this template…");
+    mapTemplate(t).then(ok => {
+      if (!ok || ED.spec !== spec || $("#editor").classList.contains("hidden")) return;
+      pushUndo(); spec.layers = relayout(spec.layers, t.zones); ED.sel = 0; renderLayersUI(); redraw(); toast("Text boxes placed", "ok");
+    });
+  }
   ED.sel = spec.layers.length ? (spec.topBar && spec.layers.length > 1 ? 1 : 0) : -1;
   $("#edTitle").textContent = spec.title;
+  $("#emojiPicker").classList.add("hidden");
   syncMode(); renderLayersUI(); redraw(); openOverlay("#editor");
 }
 function redraw() { ED.info = renderMeme(edCanvas, ED.spec.base, ED.spec.layers, ED.spec.topBar, ED.sel); }
+/* Undo / redo */
+const snap = () => JSON.stringify({ layers: ED.spec.layers, topBar: !!ED.spec.topBar });
+function pushUndo() {
+  const s0 = snap(); if (ED.undo[ED.undo.length - 1] === s0) return;
+  ED.undo.push(s0); if (ED.undo.length > 80) ED.undo.shift(); ED.redo = []; syncUndoBtns();
+}
+function restore(str) { const o = JSON.parse(str); ED.spec.layers = o.layers; ED.spec.topBar = o.topBar; ED.sel = Math.min(ED.sel, ED.spec.layers.length - 1); syncMode(); renderLayersUI(); redraw(); syncUndoBtns(); }
+function undo() { if (!ED.undo.length) return; ED.redo.push(snap()); restore(ED.undo.pop()); }
+function redo() { if (!ED.redo.length) return; ED.undo.push(snap()); restore(ED.redo.pop()); }
+function syncUndoBtns() { $("#edUndo").disabled = !ED.undo.length; $("#edRedo").disabled = !ED.redo.length; }
+$("#edUndo").onclick = undo; $("#edRedo").onclick = redo;
+document.addEventListener("keydown", e => {
+  if ($("#editor").classList.contains("hidden")) return;
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "");
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === "z" && !typing) { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && e.key.toLowerCase() === "y" && !typing) { e.preventDefault(); redo(); return; }
+  if (typing || ED.sel < 0 || !ED.spec.layers[ED.sel]) return;
+  if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); pushUndo(); ED.spec.layers.splice(ED.sel, 1); ED.sel = Math.min(ED.sel, ED.spec.layers.length - 1); renderLayersUI(); redraw(); return; }
+  const step = e.shiftKey ? .05 : .01, l = ED.spec.layers[ED.sel];
+  const mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+  if (mv) { e.preventDefault(); pushUndo(); l.x = clamp(l.x + mv[0], .02, .98); l.y = clamp(l.y + mv[1], .02, .98); redraw(); }
+});
 function syncMode() { $("#modeOverlay").classList.toggle("on", !ED.spec.topBar); $("#modeBar").classList.toggle("on", !!ED.spec.topBar); }
 function setMode(bar) {
+  pushUndo();
   ED.spec.topBar = bar;
-  if (bar && !ED.spec.layers.length) ED.spec.layers.push(Z("Text 1", .5, .1, .9, 44, CLASSIC, { text: "When you…" }));
+  if (bar && (!ED.spec.layers.length || !isText(ED.spec.layers[0]))) ED.spec.layers.unshift(Z("Top bar", .5, .1, .9, 44, CLASSIC, { text: "When you…" }));
   syncMode(); renderLayersUI(); redraw();
 }
 $("#modeOverlay").onclick = () => setMode(false);
@@ -1483,23 +1855,33 @@ $("#modeBar").onclick = () => setMode(true);
 $("#edClose").onclick = () => closeOverlay("#editor");
 function renderLayersUI() {
   layersEl.innerHTML = "";
-  if (!ED.spec.layers.length) { layersEl.innerHTML = `<p class="sub">No text yet. Tap "+ Add text".</p>`; return; }
+  if (!ED.spec.layers.length) { layersEl.innerHTML = `<p class="sub">Nothing here yet. Add text, an emoji, or an image.</p>`; return; }
   ED.spec.layers.forEach((l, i) => {
     const isBar = ED.spec.topBar && i === 0, d = document.createElement("div");
     d.className = "layer" + (i === ED.sel ? " sel" : ""); d.dataset.i = i;
-    d.innerHTML = `<div class="layer-head"><span class="layer-name">${esc(isBar ? "Top bar caption" : l.label || "Text " + (i + 1))}</span>
-      <div class="layer-tools"><button class="btn tiny yellow" data-a="punch">✨ Punch up</button>
-      <button class="icon-btn" data-a="dup" title="Duplicate">⧉</button><button class="icon-btn" data-a="del" title="Delete">🗑</button></div></div>
-      <textarea rows="2" data-a="text" placeholder="Type a caption…">${esc(l.text)}</textarea>
-      <div class="punch hidden"></div>
-      <div class="layer-row${isBar ? " hidden" : ""}">
-        <label class="mini">Size<input type="range" min="14" max="110" value="${l.size}" data-a="size"></label>
-        <select data-a="font" title="Font"><option value="impact">Impact</option><option value="comic">Comic</option><option value="clean">Clean</option></select>
-        <input type="color" value="${esc(l.color)}" data-a="color" title="Text color">
-        <button class="tgl${l.stroke ? " on" : ""}" data-a="stroke">Outline</button>
-        <button class="tgl${l.upper ? " on" : ""}" data-a="upper" title="All caps">AA</button>
-      </div>`;
-    $("select", d).value = l.font;
+    const tools = `<button class="icon-btn" data-a="dup" title="Duplicate">⧉</button><button class="icon-btn" data-a="del" title="Delete">🗑</button>`;
+    if (l.type === "image" || l.type === "emoji") {
+      const isImg = l.type === "image";
+      d.innerHTML = `<div class="layer-head"><span class="layer-name">${isImg ? "🖼️ Image" : "😀 Sticker"}</span><div class="layer-tools">${tools}</div></div>
+        ${isImg ? "" : `<input type="text" data-a="emoji" value="${esc(l.text)}" maxlength="8" style="font-size:22px;padding:6px 10px">`}
+        <div class="layer-row">
+          <label class="mini">Size<input type="range" min="${isImg ? 5 : 30}" max="${isImg ? 100 : 400}" value="${isImg ? Math.round((l.w || .4) * 100) : l.size}" data-a="${isImg ? "iw" : "size"}"></label>
+          <label class="mini">Tilt<input type="range" min="-45" max="45" value="${l.rot || 0}" data-a="rot"></label>
+        </div>`;
+    } else {
+      d.innerHTML = `<div class="layer-head"><span class="layer-name">${esc(isBar ? "Top bar caption" : l.label || "Text " + (i + 1))}</span>
+        <div class="layer-tools"><button class="btn tiny yellow" data-a="punch">✨ Punch up</button>${tools}</div></div>
+        <textarea rows="2" data-a="text" placeholder="Type a caption…">${esc(l.text)}</textarea>
+        <div class="punch hidden"></div>
+        <div class="layer-row${isBar ? " hidden" : ""}">
+          <label class="mini">Size<input type="range" min="14" max="110" value="${l.size}" data-a="size"></label>
+          <select data-a="font" title="Font"><option value="impact">Impact</option><option value="comic">Comic</option><option value="clean">Clean</option></select>
+          <input type="color" value="${esc(l.color)}" data-a="color" title="Text color">
+          <button class="tgl${l.stroke ? " on" : ""}" data-a="stroke">Outline</button>
+          <button class="tgl${l.upper ? " on" : ""}" data-a="upper" title="All caps">AA</button>
+        </div>`;
+      $("select", d).value = l.font;
+    }
     layersEl.appendChild(d);
   });
 }
@@ -1507,13 +1889,21 @@ function selectLayer(i) {
   if (ED.sel === i) return;
   ED.sel = i; $$(".layer", layersEl).forEach(el => el.classList.toggle("sel", +el.dataset.i === i)); redraw();
 }
-layersEl.addEventListener("focusin", e => { const card = e.target.closest(".layer"); if (card) selectLayer(+card.dataset.i); });
+layersEl.addEventListener("focusin", e => {
+  const card = e.target.closest(".layer"); if (!card) return;
+  selectLayer(+card.dataset.i);
+  if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) pushUndo();
+});
+layersEl.addEventListener("pointerdown", e => { if (e.target.type === "range") pushUndo(); });
 layersEl.addEventListener("input", e => {
   const card = e.target.closest(".layer"); if (!card) return;
-  const l = ED.spec.layers[+card.dataset.i], a = e.target.dataset.a;
-  if (a === "text") l.text = e.target.value;
-  if (a === "size") l.size = +e.target.value;
-  if (a === "color") l.color = e.target.value;
+  const l = ED.spec.layers[+card.dataset.i], a = e.target.dataset.a, v = e.target.value;
+  if (a === "text") l.text = v;
+  if (a === "emoji") l.text = v.trim() || "😀";
+  if (a === "size") l.size = +v;
+  if (a === "iw") l.w = +v / 100;
+  if (a === "rot") l.rot = +v;
+  if (a === "color") l.color = v;
   redraw();
 });
 layersEl.addEventListener("change", e => {
@@ -1525,11 +1915,11 @@ layersEl.addEventListener("click", e => {
   const i = +card.dataset.i, l = ED.spec.layers[i], btn = e.target.closest("button[data-a]");
   selectLayer(i); if (!btn) return;
   const a = btn.dataset.a;
-  if (a === "stroke" || a === "upper") { l[a] = !l[a]; btn.classList.toggle("on", l[a]); redraw(); }
-  if (a === "dup") { ED.spec.layers.splice(i + 1, 0, { ...l, label: (l.label || "Text") + " copy", y: clamp(l.y + .08, .03, .97) }); ED.sel = i + 1; renderLayersUI(); redraw(); }
-  if (a === "del") { ED.spec.layers.splice(i, 1); ED.sel = Math.min(ED.sel, ED.spec.layers.length - 1); renderLayersUI(); redraw(); }
+  if (a === "stroke" || a === "upper") { pushUndo(); l[a] = !l[a]; btn.classList.toggle("on", l[a]); redraw(); }
+  if (a === "dup") { pushUndo(); ED.spec.layers.splice(i + 1, 0, { ...l, label: (l.label || "Layer") + " copy", x: clamp(l.x + .04, .03, .97), y: clamp(l.y + .06, .03, .97) }); ED.sel = i + 1; renderLayersUI(); redraw(); }
+  if (a === "del") { pushUndo(); ED.spec.layers.splice(i, 1); ED.sel = Math.min(ED.sel, ED.spec.layers.length - 1); renderLayersUI(); redraw(); }
   if (a === "punch") punchUp(i, card, btn);
-  if (a === "apply") { l.text = btn.dataset.text; $("textarea", card).value = l.text; $(".punch", card).classList.add("hidden"); redraw(); toast("Punch-up applied", "ok"); }
+  if (a === "apply") { pushUndo(); l.text = btn.dataset.text; $("textarea", card).value = l.text; $(".punch", card).classList.add("hidden"); redraw(); toast("Punch-up applied", "ok"); }
 });
 async function punchUp(i, card, btn) {
   const l = ED.spec.layers[i];
@@ -1537,37 +1927,72 @@ async function punchUp(i, card, btn) {
   if (!hasAI()) return openSettings();
   busy(btn, true, "⏳");
   try {
-    const others = ED.spec.layers.map((x, j) => j === i ? null : `${x.label}: "${x.text}"`).filter(Boolean).join("; ");
+    const others = ED.spec.layers.filter(isText).map((x, j) => x === l ? null : `${x.label}: "${x.text}"`).filter(Boolean).join("; ");
     const out = await askJSON(`Rewrite this meme caption 3 funnier ways.
 Meme template: "${ED.spec.title}". This box: "${l.label}". Current text: "${l.text}".
 ${others ? `Other boxes, for context: ${others}` : ""}
-Give: 1) Shorter & snappier, 2) Dry deadpan, 3) Dramatic / unhinged. Each under 12 words. No em dashes. ${safety()}
+${myWorldText()}Give: 1) Shorter & snappier, 2) Dry deadpan, 3) Dramatic / unhinged. Each under 12 words. No em dashes. ${safety()}
 Reply with ONLY JSON: {"options":[{"style":"","text":""}]}`);
     const opts = (out.options || []).filter(o => o && o.text).slice(0, 3);
     if (!opts.length) throw new Error("none");
     const box = $(".punch", card);
     box.innerHTML = opts.map(o => `<button data-a="apply" data-text="${esc(noDash(o.text))}"><small>${esc(o.style || "Option")}</small>${esc(noDash(o.text))}</button>`).join("");
     box.classList.remove("hidden");
-  } catch (e) { if (!e || !["badkey","nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't punch that up right now.", "err"); }
+  } catch (e) { if (!e || !["badkey", "nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't punch that up right now.", "err"); }
   busy(btn, false);
 }
+function addLayerObj(obj) { pushUndo(); ED.spec.layers.push(obj); ED.sel = ED.spec.layers.length - 1; renderLayersUI(); redraw(); }
 $("#addLayer").onclick = () => {
-  const n = ED.spec.layers.length;
-  ED.spec.layers.push(Z(`Text ${n + 1}`, .5, .5, .85, 44, CLASSIC, { text: "NEW TEXT" }));
-  ED.sel = n; renderLayersUI(); redraw();
-  const ta = $$(".layer textarea", layersEl)[n]; if (ta) { ta.focus(); ta.select(); }
+  addLayerObj(Z(`Text ${ED.spec.layers.length + 1}`, .5, .5, .85, 44, CLASSIC, { text: "NEW TEXT" }));
+  const ta = $$(".layer textarea", layersEl).pop(); if (ta) { ta.focus(); ta.select(); }
+};
+const STICKERS = "😂🤣😭😱😎🤔🙄😤😴🤯🥳😬🫡🤡💀👀👍👎🙏💪🔥💯✨❤️⭐️💩🎉🍕☕️🍩🐶🐱🦖🚀📚✏️🏆⏰📱💻🎮".match(/\p{Extended_Pictographic}️?/gu);
+$("#emojiPicker").innerHTML = STICKERS.map(x => `<button data-e="${x}">${x}</button>`).join("");
+$("#addEmoji").onclick = () => $("#emojiPicker").classList.toggle("hidden");
+$("#emojiPicker").onclick = e => {
+  const b = e.target.closest("[data-e]"); if (!b) return;
+  $("#emojiPicker").classList.add("hidden");
+  addLayerObj({ type: "emoji", label: "Sticker", text: b.dataset.e, x: .5, y: .5, size: 140, rot: 0 });
+};
+async function fileToLayerSrc(file, maxW = 900) {
+  const keepAlpha = /png|webp|gif/.test(file.type);
+  if (!keepAlpha) return fileToSrc(file, maxW);
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const sc = Math.min(1, maxW / img.naturalWidth), c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/png");
+  } finally { URL.revokeObjectURL(url); }
+}
+$("#addImage").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f || !f.type.startsWith("image/")) return;
+  try { const src = await fileToLayerSrc(f); await preloadLayerImgs([{ type: "image", src }]); addLayerObj({ type: "image", label: "Image", src, x: .5, y: .5, w: .4, rot: 0 }); }
+  catch (err) { toast("Couldn't add that image.", "err"); }
 };
 $("#edCopy").onclick = () => copyCanvas(exportCanvas(ED.spec));
 $("#edSave").onclick = () => saveCanvas(exportCanvas(ED.spec), ED.spec.title);
 $("#edVault").onclick = () => addToVault(ED.spec);
+/* Drag to move, corner handle to resize */
 function toPt(e) { const r = edCanvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * edCanvas.width / r.width, y: (e.clientY - r.top) * edCanvas.height / r.height }; }
+const layerCenter = l => ({ x: l.x * ED.info.W, y: ED.info.barH + l.y * ED.info.H });
 edCanvas.addEventListener("pointerdown", e => {
   if (!ED.info) return;
-  const p = toPt(e), b = ED.info.boxes; let hit = -1;
+  const p = toPt(e), b = ED.info.boxes;
+  const selBox = ED.sel >= 0 && b[ED.sel];
+  if (selBox && selBox.handle && Math.hypot(p.x - selBox.handle.x, p.y - selBox.handle.y) < selBox.handle.r) {
+    const l = ED.spec.layers[ED.sel], c0 = layerCenter(l);
+    pushUndo();
+    ED.drag = { id: e.pointerId, mode: "resize", d0: Math.max(10, Math.hypot(p.x - c0.x, p.y - c0.y)), size0: l.size, w0: l.w };
+    edCanvas.setPointerCapture(e.pointerId); e.preventDefault(); return;
+  }
+  let hit = -1;
   for (let i = b.length - 1; i >= 0; i--) { const q = b[i]; if (q && !q.fixed && p.x >= q.x && p.x <= q.x + q.w && p.y >= q.y && p.y <= q.y + q.h) { hit = i; break; } }
   if (hit < 0) return;
-  const l = ED.spec.layers[hit];
-  ED.drag = { id: e.pointerId, dx: l.x * ED.info.W - p.x, dy: ED.info.barH + l.y * ED.info.H - p.y };
+  const l = ED.spec.layers[hit], c0 = layerCenter(l);
+  pushUndo();
+  ED.drag = { id: e.pointerId, mode: "move", dx: c0.x - p.x, dy: c0.y - p.y };
   edCanvas.setPointerCapture(e.pointerId); edCanvas.classList.add("dragging");
   if (ED.sel !== hit) { ED.sel = hit; $$(".layer", layersEl).forEach(el => el.classList.toggle("sel", +el.dataset.i === hit)); $$(".layer", layersEl)[hit]?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
   redraw(); e.preventDefault();
@@ -1575,13 +2000,69 @@ edCanvas.addEventListener("pointerdown", e => {
 edCanvas.addEventListener("pointermove", e => {
   if (!ED.drag || e.pointerId !== ED.drag.id) return;
   const p = toPt(e), l = ED.spec.layers[ED.sel];
-  l.x = clamp((p.x + ED.drag.dx) / ED.info.W, .03, .97);
-  l.y = clamp((p.y + ED.drag.dy - ED.info.barH) / ED.info.H, .02, .98);
+  if (ED.drag.mode === "resize") {
+    const c0 = layerCenter(l), r = Math.hypot(p.x - c0.x, p.y - c0.y) / ED.drag.d0;
+    if (l.type === "image") l.w = clamp((ED.drag.w0 || .4) * r, .05, 1.2);
+    else if (l.type === "emoji") l.size = clamp(Math.round((ED.drag.size0 || 120) * r), 24, 500);
+    else { l.size = clamp(Math.round((ED.drag.size0 || 36) * r), 12, 140); l.w = clamp((ED.drag.w0 || .9) * r, .15, .98); }
+  } else {
+    l.x = clamp((p.x + ED.drag.dx) / ED.info.W, .02, .98);
+    l.y = clamp((p.y + ED.drag.dy - ED.info.barH) / ED.info.H, .02, .98);
+  }
   redraw();
 });
-const endDrag = () => { ED.drag = null; edCanvas.classList.remove("dragging"); };
+const endDrag = () => {
+  if (ED.drag && ED.drag.mode === "resize") renderLayersUI();
+  ED.drag = null; edCanvas.classList.remove("dragging");
+};
 edCanvas.addEventListener("pointerup", endDrag);
 edCanvas.addEventListener("pointercancel", endDrag);
+
+/* ================= Recent history ================= */
+const HISTORY_CAP = 20;
+async function pushHistoryFromGrid() {
+  const cards = $$("#results .meme-card").map(c => c._spec).filter(Boolean);
+  if (!cards.length) return;
+  const ctx = cards[0].ctx || {};
+  const entry = { id: uid(), created: new Date().toISOString(), ctx, items: cards.map(specToStored) };
+  await storePut("history", entry, HISTORY_CAP);
+  renderHistory();
+}
+async function renderHistory() {
+  const items = await storeAll("history"), wrapEl = $("#historyStrip");
+  if (!items.length) { wrapEl.classList.add("hidden"); return; }
+  wrapEl.classList.remove("hidden");
+  $("#historyList").innerHTML = items.map(h => `<button data-id="${h.id}" title="${esc(h.ctx?.situation || "")}">${esc((h.ctx?.situation || "Memes").slice(0, 60))}<small>${esc(h.ctx?.theme && h.ctx.theme !== "All" ? h.ctx.theme + " · " : "")}${new Date(h.created).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</small></button>`).join("");
+}
+$("#historyList").addEventListener("click", async e => {
+  const b = e.target.closest("[data-id]"); if (!b) return;
+  const h = (await storeAll("history")).find(x => x.id === b.dataset.id); if (!h) return;
+  const specs = await Promise.all(h.items.map(hydrate));
+  const g = $("#results"); g.innerHTML = "";
+  specs.forEach(sp => { sp.ctx = h.ctx; g.appendChild(memeCard(sp)); });
+  if (h.ctx?.situation) $("#prompt").value = h.ctx.situation;
+  $("#resultsTitle").textContent = "From your recent memes";
+  g.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+/* ================= Service worker: offline + update banner ================= */
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (!reloading) { reloading = true; location.reload(); } });
+  navigator.serviceWorker.register("./sw.js").then(reg => {
+    const showUpdate = w => { $("#updateBar").classList.remove("hidden"); $("#updateBtn").onclick = () => { w.postMessage("skipWaiting"); $("#updateBtn").textContent = "Updating…"; }; };
+    if (reg.waiting && navigator.serviceWorker.controller) showUpdate(reg.waiting);
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing;
+      w && w.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) showUpdate(w); });
+    });
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
+}
+const syncOnline = () => $("#offlineBar").classList.toggle("hidden", navigator.onLine);
+window.addEventListener("online", syncOnline); window.addEventListener("offline", syncOnline); syncOnline();
 
 /* ================= Tabs & boot ================= */
 const TABS = ["generate", "templates", "photo", "panels", "scene", "vault"];
@@ -1595,7 +2076,8 @@ function showTab(t, push = true) {
 $("#tabs").onclick = e => { const b = e.target.closest(".tab"); if (b) showTab(b.dataset.tab); };
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1), false));
 (async () => {
-  syncAiChip(); renderCats(); renderTemplates(); renderSlots(); updateVaultCount();
+  syncAiChip(); renderCats(); renderTemplates(); renderSlots();
+  migrateVault().finally(() => { updateVaultCount(); renderHistory(); });
   showTab(location.hash.slice(1) || "generate", false);
   try { await Promise.race([Promise.all(["40px Anton", "40px Bangers", "800 40px Inter"].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
   await renderResults([
