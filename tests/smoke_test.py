@@ -90,16 +90,21 @@ async def imgflip_img(route):
     body = BANNER if "2kbn1e" in route.request.url else FIX  # Surprised Pikachu gets a white top banner
     await route.fulfill(status=200, headers={**CORS, "content-type": "image/jpeg"}, body=body)
 
-WIKI_HTML = """<div class="current-events-content description">
-<p><b>Armed conflicts and attacks</b></p><ul><li><a href="/wiki/X">Some war</a><ul><li>Something terrible happened in a battle somewhere today. <a class="external text" href="https://example.com/war">(BBC)</a></li></ul></li></ul>
-<p><b>Science and technology</b></p><ul><li>A reusable rocket lands on a drone ship for the 500th time. <a class="external text" href="https://example.com/rocket">(AP)</a></li></ul>
-</div>"""
-async def wiki(route):
-    await route.fulfill(status=200, headers=CORS, body=json.dumps({"parse": {"text": WIKI_HTML}}))
-async def hn(route):
-    u = route.request.url
-    body = [101] if "topstories" in u else {"id": 101, "title": "Show HN: A new text editor written in a weekend", "url": "https://example.com/editor"}
-    await route.fulfill(status=200, headers=CORS, body=json.dumps(body))
+REDDIT = {"data": {"children": [
+    {"data": {"title": "My cat learned to open the fridge and now I live in fear", "subreddit": "aww", "ups": 41000, "permalink": "/r/aww/comments/1/cat/", "over_18": False}},
+    {"data": {"title": "Senate vote drama continues", "subreddit": "politics", "ups": 50000, "permalink": "/r/politics/x/", "over_18": False}},
+    {"data": {"title": "Something spicy", "subreddit": "pics", "ups": 9000, "permalink": "/r/pics/y/", "over_18": True}},
+    {"data": {"title": "Man killed in highway crash", "subreddit": "pics", "ups": 9000, "permalink": "/r/pics/z/", "over_18": False}}]}}
+BSKY = {"trends": [{"topic": "Thanksgiving", "displayName": "Thanksgiving", "link": "/profile/trending.bsky.app/feed/1", "postCount": 12000, "category": "pop-culture"},
+                   {"topic": "Election", "displayName": "Election recount", "link": "/x", "postCount": 9000, "category": "politics"}]}
+MASTO_TAGS = [{"name": "Caturday", "url": "https://mastodon.social/tags/Caturday"}]
+WIKI_MOST = {"mostread": {"articles": [{"titles": {"normalized": "Main Page"}, "views": 9}, {"titles": {"normalized": "Wicked: For Good"}, "description": "2026 film", "views": 400000, "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/Wicked"}}}]}}
+async def reddit(route): await route.fulfill(status=200, headers=CORS, body=json.dumps(REDDIT))
+async def bsky(route): await route.fulfill(status=200, headers=CORS, body=json.dumps(BSKY))
+async def masto(route):
+    await route.fulfill(status=200, headers=CORS, body=json.dumps(MASTO_TAGS if "tags" in route.request.url else []))
+async def wiki(route): await route.fulfill(status=200, headers=CORS, body=json.dumps(WIKI_MOST))
+FEEDS = {"**/www.reddit.com/**": reddit, "**/public.api.bsky.app/**": bsky, "**/mastodon.social/**": masto, "**/en.wikipedia.org/**": wiki}
 
 async def main():
     httpd = serve()
@@ -110,8 +115,7 @@ async def main():
         ctx = await b.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
         await ctx.route("**/generativelanguage.googleapis.com/**", gem.handle)
         await ctx.route("**/api.imgflip.com/**", imgflip_api)
-        await ctx.route("**/en.wikipedia.org/**", wiki)
-        await ctx.route("**/hacker-news.firebaseio.com/**", hn)
+        for pat, fn in FEEDS.items(): await ctx.route(pat, fn)
         await ctx.route("**/i.imgflip.com/**", imgflip_img)
         await ctx.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body="", headers={"content-type": "text/css"}))
         pg = await ctx.new_page()
@@ -185,20 +189,21 @@ async def main():
         await pg.locator("#ideaChips [data-i]").first.click(); await pg.wait_for_timeout(1200)
         check("idea chip fills prompt and generates", await pg.input_value("#prompt") == "Idea number 0" and await pg.locator("#results .meme-card").count() == 4)
 
-        # News: top stories via Google Search tool
+        # Trending: social feeds shown instantly, no Gemini call needed to list them
         await pg.click("#newsBtn"); gem.bodies.clear(); gem.calls.clear()
         await pg.click("#newsTop"); await pg.wait_for_timeout(1200)
-        check("news stories listed", await pg.locator("#newsList .story").count() == 2)
-        np0 = next((t for m, t in gem.calls if "real headlines" in t), "")
-        check("news uses real headlines (Wikipedia + HN), no paid Search tool", "drone ship" in np0 and "text editor" in np0 and not any(b.get("tools") for b in gem.bodies), np0[:160])
-        check("news skips conflict/tragedy categories", "battle" not in np0)
-        check("news shows step-by-step status", "✓ Wikipedia Current Events" in await pg.inner_text("#newsStatus") and "Gemini picked 2" in await pg.inner_text("#newsStatus"), await pg.inner_text("#newsStatus"))
-        check("story links to the real source", await pg.locator("#newsList .story a").first.get_attribute("href") == "https://example.com/rocket")
+        txt = await pg.inner_text("#newsList")
+        check("trending lists all 4 sources", await pg.locator("#newsList .story").count() == 4 and all(w in txt for w in ["fridge", "Thanksgiving", "#Caturday", "Wicked"]), txt[:200])
+        check("trending skips NSFW, tragedy, politics", not any(w in txt for w in ["spicy", "killed", "Senate", "recount", "Main Page"]), txt[:300])
+        check("trending needs no Gemini call to list", not gem.calls)
+        st = await pg.inner_text("#newsStatus")
+        check("trending shows per-source status", all(w in st for w in ["✓ 🟠 Reddit", "✓ 🦋 Bluesky", "✓ 🐘 Mastodon", "✓ 📈 Wikipedia"]), st)
+        check("trend links to the real post", await pg.locator("#newsList .story a").first.get_attribute("href") == "https://www.reddit.com/r/aww/comments/1/cat/")
         gem.calls.clear()
         await pg.locator("#newsList .story [data-i]").first.click(); await pg.wait_for_timeout(1500)
         np = next((t for m, t in gem.calls if "Brainstorm 8" in t), "")
-        check("Meme it sends the news story", "NEWS STORY" in np and "Rocket lands" in np, np[:200])
-        check("news memes render", "📰" in await pg.inner_text("#resultsTitle"))
+        check("Meme it sends the trending topic", "TRENDING TOPIC" in np and "fridge" in np, np[:200])
+        check("trending memes render", "🔥" in await pg.inner_text("#resultsTitle"))
 
         # News: a pasted link via URL context tool
         gem.bodies.clear()
@@ -207,14 +212,16 @@ async def main():
         check("link uses url_context tool", lb.get("tools") == [{"url_context": {}}], lb.get("tools"))
         check("link story becomes the prompt", await pg.input_value("#prompt") == "Chasing my motivation down a hill")
 
-        # Feeds unreachable: say so in the panel and offer paste-text
-        await ctx.route("**/en.wikipedia.org/**", lambda r: r.abort())
-        await ctx.route("**/hacker-news.firebaseio.com/**", lambda r: r.abort())
+        # One feed down: the others still show; all down: say so and offer paste-text
+        await ctx.route("**/www.reddit.com/**", lambda r: r.abort())
         await pg.click("#newsTop"); await pg.wait_for_timeout(1200)
         st = await pg.inner_text("#newsStatus")
-        check("unreachable feeds explained inline", "couldn't load" in st and await pg.is_visible("#newsPaste"), st)
-        await ctx.unroute("**/en.wikipedia.org/**"); await ctx.unroute("**/hacker-news.firebaseio.com/**")
-        await ctx.route("**/en.wikipedia.org/**", wiki); await ctx.route("**/hacker-news.firebaseio.com/**", hn)
+        check("one dead feed doesn't block the rest", "✗ 🟠 Reddit: couldn't load" in st and await pg.locator("#newsList .story").count() == 3, st)
+        for pat in FEEDS: await ctx.unroute(pat); await ctx.route(pat, lambda r: r.abort())
+        await pg.click("#newsTop"); await pg.wait_for_timeout(1200)
+        st = await pg.inner_text("#newsStatus")
+        check("unreachable feeds explained inline", "Nothing reached this device" in st and await pg.is_visible("#newsPaste"), st)
+        for pat, fn in FEEDS.items(): await ctx.unroute(pat); await ctx.route(pat, fn)
 
         # A tool quota (free keys) must not rest the models or break normal generation
         gem.tool_fail = 429

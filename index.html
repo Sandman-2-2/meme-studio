@@ -290,14 +290,14 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
       <div class="inspire-row">
         <button class="btn small" id="surpriseBtn" title="A random spark from a totally different corner of life">🎲 Surprise me</button>
         <button class="btn small" id="ideasBtn" title="Pitch me 6 meme ideas to pick from">💡 Inspire me</button>
-        <button class="btn small" id="newsBtn" title="Meme today's news or a link">📰 News</button>
+        <button class="btn small" id="newsBtn" title="Meme what's trending, or a link">🔥 Trending</button>
         <button class="link" id="worldBtn">🌎 My World</button>
       </div>
       <div class="chips ideas hidden" id="ideaChips"></div>
       <div id="newsPanel" class="news hidden">
         <div class="news-row">
-          <button class="btn small" id="newsTop">🗞️ Today's top stories</button>
-          <input type="text" id="newsUrl" inputmode="url" placeholder="…or paste a link to a news story">
+          <button class="btn small" id="newsTop">🔥 What's trending now</button>
+          <input type="text" id="newsUrl" inputmode="url" placeholder="…or paste a link to a story or post">
           <button class="btn small" id="newsLink">🔗 Meme this link</button>
         </div>
         <div id="newsPaste" class="hidden">
@@ -307,7 +307,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
         </div>
         <div id="newsStatus" class="news-status hidden"></div>
         <div id="newsList" class="news-list"></div>
-        <p class="sub news-note">Headlines come from Wikipedia's Current Events page and Hacker News. Skips tragedies, violence, and disasters. Jokes punch at the situation, never at people who got hurt, and politics stays even-handed.</p>
+        <p class="sub news-note">Trending topics from Reddit, Bluesky, Mastodon, and Wikipedia's most-looked-up pages, shown instantly. Skips NSFW, tragedies, and partisan fights. Jokes punch at the situation, never at people, and politics stays even-handed.</p>
       </div>
       <div class="row-label"><span>Theme / Universe</span></div>
       <div class="chips" id="themeChips"></div>
@@ -1700,7 +1700,8 @@ ${names.length ? `Templates already used (pick mostly OTHER templates this time)
 `;
 }
 function newsText(n) {
-  return n ? `NEWS STORY this is based on (real, current): "${n.headline}". ${n.summary || ""}
+  return n ? `TRENDING TOPIC this is based on (real, current, from social media or the news): "${n.headline}". ${n.summary || ""}
+If this topic turns out to involve death, injury, disaster, or other tragedy, don't joke about it: make memes about a lighthearted everyday side of the general subject instead.
 NEWS RULES: Joke about the situation and the very relatable human reactions to it. Punch at the absurdity, never at victims. Keep politics even-handed: no taking sides, no mocking a party or group. Don't name real people in captions.
 ` : "";
 }
@@ -1868,7 +1869,7 @@ async function generate({ surprise = false, news = null, retry = false } = {}) {
   lastGen = { situation: p, theme: th, news: news || null };
   await renderResults(memes, { situation: p, theme: th, ...(news ? { news } : {}) });
   pushHistoryFromGrid();
-  $("#resultsTitle").textContent = usedAI ? `${news ? "📰 " : ""}Fresh memes · ${th === "All" ? tone : th + " · " + tone}` : "Quick memes (instant mode)";
+  $("#resultsTitle").textContent = usedAI ? `${news ? "🔥 " : ""}Fresh memes · ${th === "All" ? tone : th + " · " + tone}` : "Quick memes (instant mode)";
   $("#retryRow").classList.remove("hidden");
   toast(usedAI ? (retry ? "4 brand-new takes!" : "4 fresh memes, hot off the press!") : hasAI() ? `Quick memes instead. ${aiErr && aiErr.message ? aiErr.message : "AI didn't answer."}` : "Instant mode. Add a Gemini key for AI captions.", usedAI ? "ok" : "");
   busy(btn, false);
@@ -1938,88 +1939,83 @@ function memeStory(n) {
   generate({ news: { headline: noDash(n.headline).slice(0, 160), summary: noDash(n.summary || "").slice(0, 400), url: n.url || "" } });
 }
 const cleanStory = x => x && x.headline ? { emoji: String(x.emoji || "📰").slice(0, 4), headline: noDash(x.headline).slice(0, 160), summary: noDash(x.summary || "").slice(0, 300), angle: noDash(x.angle || "").slice(0, 200), url: String(x.url || "") } : null;
-/* Real headlines from free sources the browser can read directly (no paid Search tool needed). */
-const NEWS_SKIP_CATS = /conflict|attack|disaster|accident|crime|law|terror|war\b/i;
-function leafItems(root, defaultCat = "News") {
-  const out = []; let cat = defaultCat;
-  const walk = el => {
-    for (const c of el.children) {
-      if (c.matches("p, .current-events-content-heading, [role=heading], h2, h3, h4") && !c.querySelector("ul")) { const t = c.textContent.trim(); if (t && t.length < 60) cat = t; }
-      else if (c.tagName === "UL") {
-        c.querySelectorAll("li").forEach(li => {
-          if (li.querySelector("ul")) return;
-          const src = li.querySelector("a.external"); const clone = li.cloneNode(true);
-          clone.querySelectorAll("a.external, sup, style, .mw-editsection").forEach(x => x.remove());
-          const text = clone.textContent.replace(/\s+/g, " ").replace(/\(\s*\)/g, "").trim();
-          if (text.length > 30 && !NEWS_SKIP_CATS.test(cat)) out.push({ cat, text: text.slice(0, 220), url: src ? src.getAttribute("href") : "" });
-        });
-      } else if (c.children.length) walk(c);
-    }
-  };
-  walk(root);
-  return out;
-}
-async function wikiDay(d) {
-  const title = `Portal:Current_events/${d.getUTCFullYear()}_${d.toLocaleString("en-US", { month: "long", timeZone: "UTC" })}_${d.getUTCDate()}`;
-  const r = await tfetch(`https://en.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2&prop=text&redirects=1&origin=*&page=${encodeURIComponent(title)}`, {}, 15000);
-  if (!r.ok) throw { message: `HTTP ${r.status}` };
-  const j = await r.json(); const html = j?.parse?.text; if (!html) return [];
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const root = doc.querySelector(".current-events-content");
-  let out = root ? leafItems(root) : [];
-  if (!out.length) out = leafItems(doc.body).filter(x => x.url); // layout changed: any bullet with a source link
-  return out;
-}
-async function hnTop(n = 15) {
-  const r = await tfetch("https://hacker-news.firebaseio.com/v0/topstories.json", {}, 12000);
-  if (!r.ok) throw { message: `HTTP ${r.status}` };
-  const ids = await r.json();
-  const items = await Promise.all(ids.slice(0, n).map(id => tfetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, {}, 12000).then(r => r.json()).catch(() => null)));
-  return items.filter(x => x && x.title && x.url).map(x => ({ cat: "Tech & internet", text: x.title, url: x.url }));
-}
 function newsStatus(lines) {
   const el = $("#newsStatus"); el.classList.remove("hidden");
   el.innerHTML = lines.map(([ok, t]) => `<div class="${ok === true ? "good" : ok === false ? "bad" : ""}">${ok === true ? "✓" : ok === false ? "✗" : "…"} ${esc(t)}</div>`).join("");
 }
 const errText = e => (e && (e.message || e.code)) || (e && e.name) || "failed";
-async function gatherHeadlines(log) {
-  const now = new Date(), yday = new Date(Date.now() - 864e5);
-  const [wa, wb, h] = await Promise.allSettled([wikiDay(now), wikiDay(yday), hnTop()]);
-  const wiki = [...(wa.status === "fulfilled" ? wa.value : []), ...(wb.status === "fulfilled" ? wb.value : [])];
-  const wErr = wa.status === "rejected" && wb.status === "rejected" ? errText(wb.reason) : "";
-  log.push(wiki.length ? [true, `Wikipedia Current Events: ${wiki.length} usable headlines`] : [false, `Wikipedia Current Events: ${wErr ? "couldn't load (" + wErr + ")" : "no usable headlines"}`]);
-  const hn = h.status === "fulfilled" ? h.value : [];
-  log.push(hn.length ? [true, `Hacker News: ${hn.length} headlines`] : [false, `Hacker News: ${h.status === "rejected" ? "couldn't load (" + errText(h.reason) + ")" : "no headlines"}`]);
-  const seen = new Set();
-  // Balance the mix so one source can't crowd out the other.
-  return [...wiki.slice(0, 32), ...hn.slice(0, 12)].filter(x => !seen.has(x.text) && seen.add(x.text));
+/* 🔥 Trending: what people are talking about on social media right now. Shown instantly, no AI wait.
+   Each source loads on its own (8s cap) and the list fills in as they arrive. */
+const TREND_BAD = /\b(dies|died|dead|death|deaths|killed|kills|killing|murder\w*|shoot\w*|shot|stab\w*|suicide|overdose|funeral|obituar\w*|massacre|bomb\w*|explosion|terror\w*|war|wars|invasion|missile\w*|airstrike\w*|hostage\w*|abuse\w*|assault\w*|rape\w*|crash(es|ed)?|wreck|disaster|earthquake|hurricane|wildfire|flood\w*|tornado|cancer|tragedy|tragic|victim\w*|injured|arrest\w*|charged|sentenced|trial|lawsuit|nsfw|porn\w*)\b/i;
+const TREND_SKIP_SUBS = /politic|conservative|liberal|democrat|republican|news|worldnews|war|ukraine|russia|israel|palestin|gaza|iran|trump|biden|harris|vance|leopardsatemyface|whitepeopletwitter|agedlikemilk|nsfw|gonewild|tooafraidtoask|amitheasshole|aita|relationship|trueoffmychest|offmychest|legaladvice/i;
+const TREND_SRC = { reddit: "🟠 Reddit", bsky: "🦋 Bluesky", masto: "🐘 Mastodon", wiki: "📈 Wikipedia lookups" };
+const trendOK = (...t) => !TREND_BAD.test(t.join(" "));
+async function getJSON(url, ms = 8000) {
+  let r;
+  try { r = await tfetch(url, {}, ms); } catch (e) { throw { message: e && e.code === "timeout" ? `no answer in ${ms / 1000}s` : "blocked or offline" }; }
+  if (!r.ok) throw { message: `HTTP ${r.status}` };
+  return r.json();
+}
+async function trendReddit() {
+  const j = await getJSON("https://www.reddit.com/r/popular/hot.json?limit=50&raw_json=1");
+  return (j?.data?.children || []).map(c => c.data).filter(p => p && !p.over_18 && !p.stickied && !p.promoted
+    && !TREND_SKIP_SUBS.test(p.subreddit || "") && trendOK(p.title, p.link_flair_text || ""))
+    .map(p => ({ src: "reddit", emoji: "🟠", headline: p.title, summary: `Hot on r/${p.subreddit} (${(p.ups || 0).toLocaleString()} upvotes)`, url: `https://www.reddit.com${p.permalink}` }));
+}
+async function trendBluesky() {
+  const base = "https://public.api.bsky.app/xrpc/app.bsky.unspecced.";
+  let topics = [];
+  try {
+    const j = await getJSON(`${base}getTrends?limit=20`);
+    topics = (j.trends || []).filter(t => !/politic/i.test(t.category || "")).map(t => ({ name: t.displayName || t.topic, link: t.link, n: t.postCount, cat: t.category }));
+  } catch (e) {}
+  if (!topics.length) {
+    const j = await getJSON(`${base}getTrendingTopics?limit=20`);
+    topics = (j.topics || []).map(t => ({ name: t.displayName || t.topic, link: t.link, desc: t.description }));
+  }
+  return topics.filter(t => t.name && trendOK(t.name, t.desc || "")).map(t => ({ src: "bsky", emoji: "🦋", headline: t.name,
+    summary: t.desc || `Trending on Bluesky${t.n ? ` (${t.n.toLocaleString()} posts)` : ""}${t.cat ? ` · ${String(t.cat).replace(/-/g, " ")}` : ""}`,
+    url: t.link ? (t.link.startsWith("http") ? t.link : `https://bsky.app${t.link}`) : "" }));
+}
+async function trendMastodon() {
+  const m = "https://mastodon.social/api/v1/trends/";
+  const [tags, links] = await Promise.allSettled([getJSON(`${m}tags?limit=15`), getJSON(`${m}links?limit=15`)]);
+  if (tags.status === "rejected" && links.status === "rejected") throw tags.reason;
+  const out = [];
+  for (const t of tags.status === "fulfilled" ? tags.value : []) if (t && t.name && trendOK(t.name))
+    out.push({ src: "masto", emoji: "🐘", headline: `#${t.name}`, summary: "Trending hashtag on Mastodon", url: t.url || `https://mastodon.social/tags/${encodeURIComponent(t.name)}` });
+  for (const l of links.status === "fulfilled" ? links.value : []) if (l && l.title && trendOK(l.title, l.description || ""))
+    out.push({ src: "masto", emoji: "🐘", headline: l.title, summary: l.description ? l.description.slice(0, 200) : "Widely shared on Mastodon", url: l.url || "" });
+  return out;
+}
+async function trendWiki() {
+  const d = new Date(Date.now() - 864e5), p = n => String(n).padStart(2, "0");
+  const j = await getJSON(`https://en.wikipedia.org/api/rest_v1/feed/featured/${d.getUTCFullYear()}/${p(d.getUTCMonth() + 1)}/${p(d.getUTCDate())}`);
+  return (j?.mostread?.articles || []).filter(a => a && a.titles && !/^(Main Page|Special:|Wikipedia:|Portal:|File:|Deaths in|List of|\d{4} in )/.test(a.titles.normalized || "")
+    && trendOK(a.titles.normalized, a.description || "", (a.extract || "").slice(0, 300)))
+    .slice(0, 15).map(a => ({ src: "wiki", emoji: "📈", headline: a.titles.normalized, summary: `${a.description ? a.description + ". " : ""}Looked up ${Number(a.views || 0).toLocaleString()} times yesterday`,
+      url: a.content_urls?.desktop?.page || "" }));
+}
+// Round-robin the sources so one can't crowd out the rest.
+function mixTrends(lists) {
+  const out = [], seen = new Set(), max = Math.max(0, ...lists.map(l => l.length));
+  for (let i = 0; i < max && out.length < 30; i++) for (const l of lists) {
+    const x = l[i]; if (!x) continue;
+    const k = x.headline.toLowerCase().replace(/[^a-z0-9]/g, ""); if (seen.has(k)) continue; seen.add(k); out.push(x);
+  }
+  return out;
 }
 $("#newsTop").onclick = async () => {
-  if (!hasAI()) return openSettings();
-  const btn = $("#newsTop"); busy(btn, true, "⏳ Reading the news…");
+  const btn = $("#newsTop"); busy(btn, true, "⏳ Checking what's trending…");
   $("#newsPaste").classList.add("hidden"); $("#newsList").innerHTML = "";
-  const log = [[null, "Collecting today's headlines…"]]; newsStatus(log); log.length = 0;
-  try {
-    const items = await gatherHeadlines(log);
-    if (!items.length) { log.push([false, "No headlines reached this device. Paste a link or the article text below instead."]); newsStatus(log); $("#newsPaste").classList.remove("hidden"); busy(btn, false); return; }
-    log.push([null, `Asking Gemini to pick the meme-friendly ones from ${items.length}…`]); newsStatus(log);
-    lastGrounding = null;
-    const out = parseLoose(await gemini([{ text: `Here are real headlines from the last day or so (from Wikipedia's Current events page and Hacker News), numbered:
-${items.map((x, i) => `${i}. [${x.cat}] ${x.text}`).join("\n")}
-
-Pick up to 8 that someone could make a good-natured, lighthearted meme about, from a variety of categories.
-${NEWS_SAFE}
-For each pick give: "i" (its number above), "emoji", "headline" (under 14 words, your own words), "summary" (one neutral sentence using ONLY facts in that item; add nothing), and "angle" (a relatable meme situation inspired by it, under 20 words, no real names).
-Reply with ONLY JSON: {"stories":[{"i":0,"emoji":"🚀","headline":"...","summary":"...","angle":"..."}]}` }], true, { timeoutMs: 60000 }));
-    const list = (out.stories || []).filter(x => items[+x.i]).map(x => cleanStory({ ...x, url: items[+x.i].url })).filter(Boolean).slice(0, 8);
-    if (!list.length) throw { message: "Gemini didn't find any meme-friendly stories in today's list. Try again later, or paste a link." };
-    log.pop(); log.push([true, `Gemini picked ${list.length} stories`]); newsStatus(log);
-    renderStories(list);
-  } catch (e) {
-    if (e && ["badkey", "nokey"].includes(e.code)) { busy(btn, false); return; }
-    if (log.length && log[log.length - 1][0] === null) log.pop();
-    log.push([false, `Gemini: ${errText(e)}`]); newsStatus(log);
-  }
+  const order = ["reddit", "bsky", "masto", "wiki"], fns = { reddit: trendReddit, bsky: trendBluesky, masto: trendMastodon, wiki: trendWiki };
+  const got = {}, state = Object.fromEntries(order.map(k => [k, [null, `${TREND_SRC[k]}: loading…`]]));
+  const show = () => { newsStatus(order.map(k => state[k])); lastGrounding = null; renderStories(mixTrends(order.map(k => got[k] || []))); };
+  show();
+  await Promise.all(order.map(k => fns[k]().then(list => {
+    got[k] = list; state[k] = list.length ? [true, `${TREND_SRC[k]}: ${list.length} trending`] : [false, `${TREND_SRC[k]}: nothing meme-friendly right now`]; show();
+  }, e => { state[k] = [false, `${TREND_SRC[k]}: couldn't load (${errText(e)})`]; show(); })));
+  if (!newsStories.length) { newsStatus([...order.map(k => state[k]), [false, "Nothing reached this device. Paste a link or some text below instead."]]); $("#newsPaste").classList.remove("hidden"); }
   busy(btn, false);
 };
 async function storyFrom(prompt, tools) {
