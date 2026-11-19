@@ -100,11 +100,14 @@ textarea:focus,input[type=text]:focus,select:focus{box-shadow:0 0 0 3px var(--ye
 .story span{font:500 13px Inter,sans-serif;color:#444}
 .story .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto}
 .story a{font:700 12px Inter,sans-serif;color:#c2410c}
+.news-status{margin-top:10px;font:600 13px Inter,sans-serif;background:#fff;border:2px solid var(--ink);border-radius:10px;padding:8px 10px;line-height:1.5}
+.news-status .bad{color:#b91c1c}.news-status .good{color:#15803d}
 .news-note{margin:10px 0 0;font-size:12px}
 .retry-row{display:flex;flex-direction:column;align-items:center;gap:6px;margin:16px 0 6px;text-align:center}
 .out-pane{display:flex;flex-direction:column;gap:22px}
 /* Edge-to-edge: keep content clear of curved edges, hinges, and system bars */
-header.top .wrap,main.wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+header.top .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+main.wrap{padding-left:max(16px,env(safe-area-inset-left))}
 header.top{padding-top:env(safe-area-inset-top)}
 .tabs.more-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
 .tabs.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 44px),transparent)}
@@ -302,6 +305,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
           <textarea id="newsText" rows="4" placeholder="Paste the article text here"></textarea>
           <button class="btn small" id="newsTextGo" style="margin-top:8px">📝 Meme this text</button>
         </div>
+        <div id="newsStatus" class="news-status hidden"></div>
         <div id="newsList" class="news-list"></div>
         <p class="sub news-note">Headlines come from Wikipedia's Current Events page and Hacker News. Skips tragedies, violence, and disasters. Jokes punch at the situation, never at people who got hurt, and politics stays even-handed.</p>
       </div>
@@ -1936,23 +1940,18 @@ function memeStory(n) {
 const cleanStory = x => x && x.headline ? { emoji: String(x.emoji || "📰").slice(0, 4), headline: noDash(x.headline).slice(0, 160), summary: noDash(x.summary || "").slice(0, 300), angle: noDash(x.angle || "").slice(0, 200), url: String(x.url || "") } : null;
 /* Real headlines from free sources the browser can read directly (no paid Search tool needed). */
 const NEWS_SKIP_CATS = /conflict|attack|disaster|accident|crime|law|terror|war\b/i;
-async function wikiDay(d) {
-  const title = `Portal:Current_events/${d.getUTCFullYear()}_${d.toLocaleString("en-US", { month: "long", timeZone: "UTC" })}_${d.getUTCDate()}`;
-  const r = await tfetch(`https://en.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2&prop=text&origin=*&page=${encodeURIComponent(title)}`, {}, 12000);
-  const j = await r.json(); const html = j?.parse?.text; if (!html) return [];
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const root = doc.querySelector(".current-events-content") || doc.body;
-  const out = []; let cat = "News";
+function leafItems(root, defaultCat = "News") {
+  const out = []; let cat = defaultCat;
   const walk = el => {
     for (const c of el.children) {
-      if (c.matches("p, .current-events-content-heading, [role=heading]") && !c.querySelector("ul")) { const t = c.textContent.trim(); if (t && t.length < 60) cat = t; }
+      if (c.matches("p, .current-events-content-heading, [role=heading], h2, h3, h4") && !c.querySelector("ul")) { const t = c.textContent.trim(); if (t && t.length < 60) cat = t; }
       else if (c.tagName === "UL") {
         c.querySelectorAll("li").forEach(li => {
           if (li.querySelector("ul")) return;
           const src = li.querySelector("a.external"); const clone = li.cloneNode(true);
-          clone.querySelectorAll("a.external, sup").forEach(x => x.remove());
+          clone.querySelectorAll("a.external, sup, style, .mw-editsection").forEach(x => x.remove());
           const text = clone.textContent.replace(/\s+/g, " ").replace(/\(\s*\)/g, "").trim();
-          if (text.length > 30 && !NEWS_SKIP_CATS.test(cat)) out.push({ cat, text: text.slice(0, 300), url: src ? src.getAttribute("href") : "" });
+          if (text.length > 30 && !NEWS_SKIP_CATS.test(cat)) out.push({ cat, text: text.slice(0, 220), url: src ? src.getAttribute("href") : "" });
         });
       } else if (c.children.length) walk(c);
     }
@@ -1960,47 +1959,66 @@ async function wikiDay(d) {
   walk(root);
   return out;
 }
+async function wikiDay(d) {
+  const title = `Portal:Current_events/${d.getUTCFullYear()}_${d.toLocaleString("en-US", { month: "long", timeZone: "UTC" })}_${d.getUTCDate()}`;
+  const r = await tfetch(`https://en.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2&prop=text&redirects=1&origin=*&page=${encodeURIComponent(title)}`, {}, 15000);
+  if (!r.ok) throw { message: `HTTP ${r.status}` };
+  const j = await r.json(); const html = j?.parse?.text; if (!html) return [];
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const root = doc.querySelector(".current-events-content");
+  let out = root ? leafItems(root) : [];
+  if (!out.length) out = leafItems(doc.body).filter(x => x.url); // layout changed: any bullet with a source link
+  return out;
+}
 async function hnTop(n = 15) {
-  const ids = await (await tfetch("https://hacker-news.firebaseio.com/v0/topstories.json", {}, 10000)).json();
-  const items = await Promise.all(ids.slice(0, n).map(id => tfetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, {}, 10000).then(r => r.json()).catch(() => null)));
+  const r = await tfetch("https://hacker-news.firebaseio.com/v0/topstories.json", {}, 12000);
+  if (!r.ok) throw { message: `HTTP ${r.status}` };
+  const ids = await r.json();
+  const items = await Promise.all(ids.slice(0, n).map(id => tfetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, {}, 12000).then(r => r.json()).catch(() => null)));
   return items.filter(x => x && x.title && x.url).map(x => ({ cat: "Tech & internet", text: x.title, url: x.url }));
 }
-async function gatherHeadlines() {
+function newsStatus(lines) {
+  const el = $("#newsStatus"); el.classList.remove("hidden");
+  el.innerHTML = lines.map(([ok, t]) => `<div class="${ok === true ? "good" : ok === false ? "bad" : ""}">${ok === true ? "✓" : ok === false ? "✗" : "…"} ${esc(t)}</div>`).join("");
+}
+const errText = e => (e && (e.message || e.code)) || (e && e.name) || "failed";
+async function gatherHeadlines(log) {
   const now = new Date(), yday = new Date(Date.now() - 864e5);
-  const res = await Promise.allSettled([wikiDay(now), wikiDay(yday), hnTop()]);
-  const [a, b, c] = res.map(x => x.status === "fulfilled" ? x.value : []);
+  const [wa, wb, h] = await Promise.allSettled([wikiDay(now), wikiDay(yday), hnTop()]);
+  const wiki = [...(wa.status === "fulfilled" ? wa.value : []), ...(wb.status === "fulfilled" ? wb.value : [])];
+  const wErr = wa.status === "rejected" && wb.status === "rejected" ? errText(wb.reason) : "";
+  log.push(wiki.length ? [true, `Wikipedia Current Events: ${wiki.length} usable headlines`] : [false, `Wikipedia Current Events: ${wErr ? "couldn't load (" + wErr + ")" : "no usable headlines"}`]);
+  const hn = h.status === "fulfilled" ? h.value : [];
+  log.push(hn.length ? [true, `Hacker News: ${hn.length} headlines`] : [false, `Hacker News: ${h.status === "rejected" ? "couldn't load (" + errText(h.reason) + ")" : "no headlines"}`]);
   const seen = new Set();
-  return [...a, ...b, ...c].filter(x => !seen.has(x.text) && seen.add(x.text)).slice(0, 70);
+  // Balance the mix so one source can't crowd out the other.
+  return [...wiki.slice(0, 32), ...hn.slice(0, 12)].filter(x => !seen.has(x.text) && seen.add(x.text));
 }
 $("#newsTop").onclick = async () => {
   if (!hasAI()) return openSettings();
   const btn = $("#newsTop"); busy(btn, true, "⏳ Reading the news…");
-  $("#newsPaste").classList.add("hidden");
+  $("#newsPaste").classList.add("hidden"); $("#newsList").innerHTML = "";
+  const log = [[null, "Collecting today's headlines…"]]; newsStatus(log); log.length = 0;
   try {
-    const items = await gatherHeadlines();
-    let list = [];
-    if (items.length) {
-      lastGrounding = null;
-      const out = await askJSON(`Here are real headlines from the last day or so (from Wikipedia's Current events page and Hacker News), numbered:
+    const items = await gatherHeadlines(log);
+    if (!items.length) { log.push([false, "No headlines reached this device. Paste a link or the article text below instead."]); newsStatus(log); $("#newsPaste").classList.remove("hidden"); busy(btn, false); return; }
+    log.push([null, `Asking Gemini to pick the meme-friendly ones from ${items.length}…`]); newsStatus(log);
+    lastGrounding = null;
+    const out = parseLoose(await gemini([{ text: `Here are real headlines from the last day or so (from Wikipedia's Current events page and Hacker News), numbered:
 ${items.map((x, i) => `${i}. [${x.cat}] ${x.text}`).join("\n")}
 
 Pick up to 8 that someone could make a good-natured, lighthearted meme about, from a variety of categories.
 ${NEWS_SAFE}
 For each pick give: "i" (its number above), "emoji", "headline" (under 14 words, your own words), "summary" (one neutral sentence using ONLY facts in that item; add nothing), and "angle" (a relatable meme situation inspired by it, under 20 words, no real names).
-Reply with ONLY JSON: {"stories":[{"i":0,"emoji":"🚀","headline":"...","summary":"...","angle":"..."}]}`);
-      list = (out.stories || []).filter(x => items[+x.i]).map(x => cleanStory({ ...x, url: items[+x.i].url })).filter(Boolean).slice(0, 8);
-    } else {
-      // Couldn't reach the free feeds: try Gemini's Search tool (works only on paid keys).
-      const out = await askJSON(`Today is ${new Date().toDateString()}. Use Google Search to find today's top news stories. Pick 8 good for lighthearted memes.
-${NEWS_SAFE}
-Reply with ONLY JSON: {"stories":[{"emoji":"🚀","headline":"...","summary":"...","angle":"...","url":""}]}`, { tools: [{ google_search: {} }] });
-      list = (out.stories || []).map(cleanStory).filter(Boolean).slice(0, 8);
-    }
-    if (!list.length) throw { message: "No meme-friendly stories came back. Try again in a bit." };
+Reply with ONLY JSON: {"stories":[{"i":0,"emoji":"🚀","headline":"...","summary":"...","angle":"..."}]}` }], true, { timeoutMs: 60000 }));
+    const list = (out.stories || []).filter(x => items[+x.i]).map(x => cleanStory({ ...x, url: items[+x.i].url })).filter(Boolean).slice(0, 8);
+    if (!list.length) throw { message: "Gemini didn't find any meme-friendly stories in today's list. Try again later, or paste a link." };
+    log.pop(); log.push([true, `Gemini picked ${list.length} stories`]); newsStatus(log);
     renderStories(list);
   } catch (e) {
-    if (e && e.code === "toolquota") toast("Couldn't reach the news feeds. Paste a link or the article text instead.", "err");
-    else if (!e || !["badkey", "nokey"].includes(e.code)) toast(e && e.message ? `News: ${e.message}` : "Couldn't fetch the news.", "err");
+    if (e && ["badkey", "nokey"].includes(e.code)) { busy(btn, false); return; }
+    if (log.length && log[log.length - 1][0] === null) log.pop();
+    log.push([false, `Gemini: ${errText(e)}`]); newsStatus(log);
   }
   busy(btn, false);
 };

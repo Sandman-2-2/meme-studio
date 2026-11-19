@@ -192,6 +192,7 @@ async def main():
         np0 = next((t for m, t in gem.calls if "real headlines" in t), "")
         check("news uses real headlines (Wikipedia + HN), no paid Search tool", "drone ship" in np0 and "text editor" in np0 and not any(b.get("tools") for b in gem.bodies), np0[:160])
         check("news skips conflict/tragedy categories", "battle" not in np0)
+        check("news shows step-by-step status", "✓ Wikipedia Current Events" in await pg.inner_text("#newsStatus") and "Gemini picked 2" in await pg.inner_text("#newsStatus"), await pg.inner_text("#newsStatus"))
         check("story links to the real source", await pg.locator("#newsList .story a").first.get_attribute("href") == "https://example.com/rocket")
         gem.calls.clear()
         await pg.locator("#newsList .story [data-i]").first.click(); await pg.wait_for_timeout(1500)
@@ -205,6 +206,15 @@ async def main():
         lb = next((b for b in gem.bodies if "URL tool" in b["contents"][0]["parts"][0]["text"]), {})
         check("link uses url_context tool", lb.get("tools") == [{"url_context": {}}], lb.get("tools"))
         check("link story becomes the prompt", await pg.input_value("#prompt") == "Chasing my motivation down a hill")
+
+        # Feeds unreachable: say so in the panel and offer paste-text
+        await ctx.route("**/en.wikipedia.org/**", lambda r: r.abort())
+        await ctx.route("**/hacker-news.firebaseio.com/**", lambda r: r.abort())
+        await pg.click("#newsTop"); await pg.wait_for_timeout(1200)
+        st = await pg.inner_text("#newsStatus")
+        check("unreachable feeds explained inline", "couldn't load" in st and await pg.is_visible("#newsPaste"), st)
+        await ctx.unroute("**/en.wikipedia.org/**"); await ctx.unroute("**/hacker-news.firebaseio.com/**")
+        await ctx.route("**/en.wikipedia.org/**", wiki); await ctx.route("**/hacker-news.firebaseio.com/**", hn)
 
         # A tool quota (free keys) must not rest the models or break normal generation
         gem.tool_fail = 429
