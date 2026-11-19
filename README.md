@@ -10,7 +10,10 @@ A personal meme maker: classic templates, AI captions (Google Gemini), a full ca
 - **~120 classic templates** from imgflip, 75 hand-mapped (incl. 11 Simpsons) with example captions; the rest are auto-mapped by Gemini vision the first time they're used.
 - **Smarter generation:** Gemini brainstorms 8 candidates, scores them, and keeps the best 4. Per-meme **🔁 New take** and **🔀 Swap template**.
 - **🌎 My World:** inside jokes, names and saved custom themes the AI can weave in.
-- **🎲 Surprise me:** AI invents a fresh situation for the selected theme each time.
+- **🎲 Surprise me:** a random spark (a corner of everyday life × a comedy lens, plus the season) so each surprise is a whole different take.
+- **💡 Inspire me:** 6 idea chips from different areas of life; tap one to make memes.
+- **🔄 Try again:** reruns the whole prompt. The app remembers jokes and templates already shown for each prompt and tells the AI to avoid them; random comedy lenses push it to new angles (🔁 New take does the same).
+- **📰 News:** today's meme-friendly top stories (Gemini + Google Search) or any pasted link (Gemini URL reading), with a paste-the-text fallback. Skips tragedies; politics stays even-handed.
 - **Editor:** drag, corner-resize, undo/redo (Ctrl+Z), auto-fit text, emoji stickers, image layers, top-bar caption style, ✨ Punch up.
 - **Robust:** auto-discovers current Gemini models, skips busy/over-quota models, remembers what works, tracks today's usage.
 - **Offline-ready PWA:** service worker caches the app and templates; shows a "new version ready" banner after updates.

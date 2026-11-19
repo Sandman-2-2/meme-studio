@@ -31,6 +31,7 @@ class FakeGemini:
     """Answers like Gemini: model list, captions JSON, vision box maps."""
     def __init__(self):
         self.calls = []
+        self.bodies = []
         self.fail = {}  # model -> status to return
     async def handle(self, route):
         r = route.request
@@ -42,6 +43,7 @@ class FakeGemini:
         parts = body["contents"][0]["parts"]
         text = parts[0]["text"]
         self.calls.append((model, text))
+        self.bodies.append(body)
         if model in self.fail:
             return await route.fulfill(status=self.fail[model], headers=CORS, body=json.dumps({"error": {"message": "Quota exceeded for metric PerDay" if self.fail[model] == 429 else "high demand"}}))
         if '"ok":true' in text and len(text) < 60:
@@ -53,6 +55,13 @@ class FakeGemini:
             out = {"candidates": [{"templateId": tid, "captions": ["NEW TAKE A", "NEW TAKE B"], "score": 9}]}
         elif "Re-tell this same joke" in text:
             out = {"candidates": [{"templateId": "55311130", "captions": ["SWAPPED", "This is fine"], "score": 8}]}
+        elif "Pitch 6 meme situations" in text:
+            out = {"ideas": [{"emoji": "🦃", "idea": f"Idea number {i}"} for i in range(6)]}
+        elif "find today's top news stories" in text:
+            out = {"stories": [{"emoji": "🚀", "headline": "Rocket lands on a barge", "summary": "A rocket landed.", "angle": "When the landing is smoother than my Monday", "url": "https://example.com/rocket"},
+                               {"emoji": "🐧", "headline": "Penguin escapes zoo", "summary": "Briefly.", "angle": "Penguin plans a weekend", "url": ""}]}
+        elif "Read this news article using your URL tool" in text:
+            out = {"ok": True, "emoji": "🧀", "headline": "Giant cheese wheel rolls downhill", "summary": "Cheese race.", "angle": "Chasing my motivation down a hill"}
         elif "funnier ways" in text:
             out = {"options": [{"style": "Shorter", "text": "Punchier"}]}
         else:
@@ -133,6 +142,7 @@ async def main():
         await pg.locator("#results .meme-card").nth(1).locator("[data-a=take]").click(); await pg.wait_for_timeout(1200)
         texts = await pg.evaluate("[...document.querySelectorAll('#results .meme-card')].map(c => c._spec.layers.map(l => l.text).join('|'))")
         check("New take rewrites one card", any("NEW TAKE A" in t for t in texts), texts)
+        check("New take avoids jokes already shown", any("Rewrite this meme" in t and "ALREADY SHOWN" in t for m, t in gem.calls))
         await pg.locator("#results .meme-card").nth(0).locator("[data-a=swap]").click(); await pg.wait_for_timeout(1200)
         t3 = await pg.locator("#results .meme-card").nth(0).locator(".mc-top span").inner_text()
         check("Swap template changes template", t3.lower() == "this is fine", t3)
@@ -140,6 +150,40 @@ async def main():
         # Surprise
         await pg.click("#surpriseBtn"); await pg.wait_for_timeout(1500)
         check("Surprise fills invented situation", await pg.input_value("#prompt") == "AI invented situation")
+
+        # Try again: reruns the prompt with an avoid list of jokes already shown
+        await pg.fill("#prompt", "copier jams"); gem.calls.clear()
+        check("Try again button visible", await pg.is_visible("#retryBtn"))
+        await pg.click("#retryBtn"); await pg.wait_for_timeout(1500)
+        retry_prompt = next((t for m, t in gem.calls if "Brainstorm 8" in t), "")
+        check("Try again sends avoid list", "ALREADY SHOWN" in retry_prompt and "best one" in retry_prompt, retry_prompt[:200])
+        check("prompt has comedy lenses", "COMEDY LENSES" in retry_prompt)
+        check("Try again renders 4", await pg.locator("#results .meme-card").count() == 4)
+
+        # Inspire me
+        await pg.click("#ideasBtn"); await pg.wait_for_timeout(1000)
+        check("Inspire me shows 6 idea chips", await pg.locator("#ideaChips [data-i]").count() == 6)
+        await pg.locator("#ideaChips [data-i]").first.click(); await pg.wait_for_timeout(1200)
+        check("idea chip fills prompt and generates", await pg.input_value("#prompt") == "Idea number 0" and await pg.locator("#results .meme-card").count() == 4)
+
+        # News: top stories via Google Search tool
+        await pg.click("#newsBtn"); gem.bodies.clear(); gem.calls.clear()
+        await pg.click("#newsTop"); await pg.wait_for_timeout(1200)
+        check("news stories listed", await pg.locator("#newsList .story").count() == 2)
+        nb = next((b for b in gem.bodies if "top news" in b["contents"][0]["parts"][0]["text"]), {})
+        check("news uses google_search tool (no JSON mode)", nb.get("tools") == [{"google_search": {}}] and "responseMimeType" not in nb.get("generationConfig", {}), nb.get("tools"))
+        gem.calls.clear()
+        await pg.locator("#newsList .story [data-i]").first.click(); await pg.wait_for_timeout(1500)
+        np = next((t for m, t in gem.calls if "Brainstorm 8" in t), "")
+        check("Meme it sends the news story", "NEWS STORY" in np and "Rocket lands" in np, np[:200])
+        check("news memes render", "📰" in await pg.inner_text("#resultsTitle"))
+
+        # News: a pasted link via URL context tool
+        gem.bodies.clear()
+        await pg.fill("#newsUrl", "https://example.com/cheese"); await pg.click("#newsLink"); await pg.wait_for_timeout(1500)
+        lb = next((b for b in gem.bodies if "URL tool" in b["contents"][0]["parts"][0]["text"]), {})
+        check("link uses url_context tool", lb.get("tools") == [{"url_context": {}}], lb.get("tools"))
+        check("link story becomes the prompt", await pg.input_value("#prompt") == "Chasing my motivation down a hill")
 
         # Editor: undo/redo, emoji, image, resize
         await pg.locator("#results .meme-card canvas").first.click(); await pg.wait_for_timeout(400)

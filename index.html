@@ -87,6 +87,21 @@ textarea:focus,input[type=text]:focus,select:focus{box-shadow:0 0 0 3px var(--ye
 .toggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;user-select:none}
 .toggle input{width:18px;height:18px;accent-color:var(--blue)}
 
+.inspire-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.inspire-row .link{margin-left:auto}
+.ideas{margin-top:10px}
+.ideas .sample{text-align:left;max-width:100%}
+.news{margin-top:12px;padding:12px;border:2px dashed var(--ink);border-radius:14px;background:#fffdf7}
+.news-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.news-row input{flex:1 1 220px;width:auto;padding:9px 12px}
+.news-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:10px}
+.story{border:2px solid var(--ink);border-radius:12px;background:#fff;padding:10px 12px;display:flex;flex-direction:column;gap:6px;box-shadow:2px 2px 0 var(--ink)}
+.story b{font:800 14px Inter,sans-serif}
+.story span{font:500 13px Inter,sans-serif;color:#444}
+.story .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto}
+.story a{font:700 12px Inter,sans-serif;color:#c2410c}
+.news-note{margin:10px 0 0;font-size:12px}
+.retry-row{display:flex;flex-direction:column;align-items:center;gap:6px;margin:16px 0 6px;text-align:center}
 .results-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .grid4{display:grid;align-items:start;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
 .meme-card{background:#fff;border:3px solid var(--ink);border-radius:16px;box-shadow:var(--shadow);padding:10px;display:flex;flex-direction:column;gap:10px;animation:pop .3s ease both}
@@ -237,7 +252,28 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
         <div class="samples" id="samples"></div>
       </div>
       <textarea id="prompt" rows="3" placeholder="e.g. Day four of indoor recess and the LEGO bin has formed a government"></textarea>
-      <div class="row-label"><span>Theme / Universe</span><span style="display:flex;gap:14px"><button class="link" id="worldBtn">🌎 My World</button><button class="link" id="surpriseBtn">🎲 Surprise me</button></span></div>
+      <div class="inspire-row">
+        <button class="btn small" id="surpriseBtn" title="A random spark from a totally different corner of life">🎲 Surprise me</button>
+        <button class="btn small" id="ideasBtn" title="Pitch me 6 meme ideas to pick from">💡 Inspire me</button>
+        <button class="btn small" id="newsBtn" title="Meme today's news or a link">📰 News</button>
+        <button class="link" id="worldBtn">🌎 My World</button>
+      </div>
+      <div class="chips ideas hidden" id="ideaChips"></div>
+      <div id="newsPanel" class="news hidden">
+        <div class="news-row">
+          <button class="btn small" id="newsTop">🗞️ Today's top stories</button>
+          <input type="text" id="newsUrl" inputmode="url" placeholder="…or paste a link to a news story">
+          <button class="btn small" id="newsLink">🔗 Meme this link</button>
+        </div>
+        <div id="newsPaste" class="hidden">
+          <p class="sub">Couldn't open that link (some sites block readers). Paste the article text instead:</p>
+          <textarea id="newsText" rows="4" placeholder="Paste the article text here"></textarea>
+          <button class="btn small" id="newsTextGo" style="margin-top:8px">📝 Meme this text</button>
+        </div>
+        <div id="newsList" class="news-list"></div>
+        <p class="sub news-note">Skips tragedies, violence, and disasters. Jokes punch at the situation, never at people who got hurt, and politics stays even-handed.</p>
+      </div>
+      <div class="row-label"><span>Theme / Universe</span></div>
       <div class="chips" id="themeChips"></div>
       <div id="customWrap" class="hidden" style="display:flex;gap:8px;margin-top:10px"><input type="text" id="customTheme" style="margin:0" placeholder="Any fandom, hobby, or universe (D&D, 90s nostalgia, cooking shows, robotics club…)"><button class="btn small" id="saveTheme" title="Save as a theme button">★ Save</button></div>
       <div class="gen-foot">
@@ -253,6 +289,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
     </div>
     <div class="results-head"><h3 id="resultsTitle">Starter memes</h3><span class="sub">Tap any meme to edit it</span></div>
     <div class="grid4" id="results"></div>
+    <div class="retry-row hidden" id="retryRow"><button class="btn big" id="retryBtn">🔄 Try again: 4 brand-new takes</button><span class="sub">Same prompt, new angles. It won't repeat the jokes you've already seen.</span></div>
     <div id="historyStrip" class="hidden"><div class="row-label" style="margin:0 0 8px"><span>🕘 Recent</span></div><div class="history" id="historyList"></div></div>
   </section>
 
@@ -1177,7 +1214,8 @@ const noThinkCfg = new Set();
 const GOOD_MODEL_KEY = "memeStudio.goodModel";
 const goodModel = () => { try { return localStorage.getItem(GOOD_MODEL_KEY) || ""; } catch (e) { return ""; } };
 // Tries each candidate model in turn. Busy (5xx), slow (timeout) or missing (404) models are skipped.
-async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAttempt = null } = {}) {
+let lastGrounding = null;
+async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAttempt = null, tools = null, temperature = null } = {}) {
   const key = getKey();
   if (!key) { openSettings(); throw { code: "nokey", message: "No API key yet." }; }
   let last;
@@ -1186,7 +1224,10 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
     const t0 = Date.now();
     try {
       const body = { contents: [{ role: "user", parts }], generationConfig: {} };
-      if (json) body.generationConfig.responseMimeType = "application/json";
+      if (json && !tools) body.generationConfig.responseMimeType = "application/json";
+      if (tools) body.tools = tools;
+      // Gemini 3+ is tuned for temperature 1.0; only nudge older models.
+      if (temperature != null && !/gemini-(3|4)/.test(model)) body.generationConfig.temperature = temperature;
       const lowThink = /gemini-(3|4)/.test(model) && !noThinkCfg.has(model);
       if (lowThink) body.generationConfig.thinkingConfig = { thinkingLevel: "low" };
       onAttempt && onAttempt(model, "trying");
@@ -1195,7 +1236,7 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
         { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body) }, timeoutMs);
       if (!r.ok) {
         const txt = await r.text();
-        if (r.status === 400 && lowThink && /thinking/i.test(txt)) { noThinkCfg.add(model); return gemini(parts, json, { only: model, timeoutMs, onAttempt }); }
+        if (r.status === 400 && lowThink && /thinking/i.test(txt)) { noThinkCfg.add(model); return gemini(parts, json, { only: model, timeoutMs, onAttempt, tools, temperature }); }
         const e = gemErr(r.status, txt);
         if (e.code === "badkey") { toast(e.message, "err"); throw e; }
         if (r.status >= 500) e.message = `${model} is busy right now (${r.status}).`;
@@ -1210,7 +1251,8 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
         onAttempt && onAttempt(model, "fail", last.message, Date.now() - t0); continue;
       }
       lastModel = model;
-      try { localStorage.setItem(GOOD_MODEL_KEY, model); } catch (e) {}
+      lastGrounding = d?.candidates?.[0]?.groundingMetadata || null;
+      if (!tools) { try { localStorage.setItem(GOOD_MODEL_KEY, model); } catch (e) {} }
       onAttempt && onAttempt(model, "ok", "", Date.now() - t0);
       return text;
     } catch (e) {
@@ -1232,10 +1274,12 @@ function parseLoose(t) {
   if (a < 0 || b < a) throw { message: "Gemini's answer wasn't in the expected format." };
   return JSON.parse(t.slice(a, b + 1));
 }
-async function askJSON(prompt, { images } = {}) {
+async function askJSON(prompt, { images, tools, temperature, timeoutMs } = {}) {
   const parts = [{ text: prompt }];
   if (images) for (const blob of images) parts.push({ inlineData: { mimeType: blob.type || "image/jpeg", data: await blobToB64(blob) } });
-  return parseLoose(await gemini(parts, true));
+  const opts = { tools: tools || null, temperature: temperature ?? null };
+  if (timeoutMs || tools) opts.timeoutMs = timeoutMs || 60000;
+  return parseLoose(await gemini(parts, true, opts));
 }
 async function geminiImage(prompt) {
   const key = getKey();
@@ -1489,8 +1533,8 @@ SITUATION: "${ctx.situation}"  THEME: ${ctx.theme}  TONE: ${tone}
 ${myWorldText()}${safety()}
 TEMPLATE:
 ${catalogLines([t])}
-CURRENT CAPTIONS (don't reuse this angle): ${current}
-Brainstorm 3 alternatives, score each 1 to 10, return them all.
+${newsText(ctx.news)}CURRENT CAPTIONS (don't reuse this angle): ${current}
+${avoidText(ctx.situation)}Brainstorm 3 alternatives, each from a different one of these lenses: ${pickN(LENSES, 3).map(l => `"${l}"`).join(", ")}. Score each 1 to 10, return them all.
 ${RULES}
 Reply with ONLY JSON: {"candidates":[{"templateId":"${t.id}","captions":["..."],"score":7}]}`;
     } else {
@@ -1505,12 +1549,16 @@ Brainstorm 3 options on different templates, score each 1 to 10, return them all
 ${RULES}
 Reply with ONLY JSON: {"candidates":[{"templateId":"...","captions":["..."],"score":7}]}`;
     }
-    const out = await askJSON(prompt);
-    let best = validMemes((out.candidates || []).filter(c => mode === "take" ? String(c.templateId) === t.id : String(c.templateId) !== t.id), 1);
+    const out = await askJSON(prompt, { temperature: 1.15 });
+    const shown = new Set(seenFor(ctx.situation).j);
+    let cands = (out.candidates || []).filter(c => mode === "take" ? String(c.templateId) === t.id : String(c.templateId) !== t.id);
+    const freshC = cands.filter(c => !shown.has((c.captions || []).map(x => noDash(x).trim()).filter(Boolean).join(" / ")));
+    let best = validMemes(freshC.length ? freshC : cands, 1);
     if (!best) throw { message: "Gemini didn't return a usable option. Try again." };
     const next = await specFromTemplate(best[0].t, best[0].captions);
     next.ctx = ctx;
     const card = memeCard(next); el.replaceWith(card);
+    seenAdd(ctx.situation, [next]);
     pushHistoryFromGrid();
   } catch (e) { busy(btn, false); if (!e || !["badkey", "nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't remix that one.", "err"); }
 }
@@ -1560,12 +1608,63 @@ const SURPRISE = {
     "Everyone agreeing in the meeting, then complaining in the parking lot", "Proposing a simple solution and getting sent to a subcommittee",
     "When the 'quick vote' becomes a 40-minute discussion", "Campaigning for class president with a promise of longer recess"]
 };
-const recentSurprises = [];
+const RECENT_KEY = "memeStudio.recentSparks.v1";
+const recentSurprises = (() => { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]").slice(-12); } catch (e) { return []; } })();
+function noteRecent(x) { recentSurprises.push(x); while (recentSurprises.length > 12) recentSurprises.shift(); try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentSurprises)); } catch (e) {} }
+
+/* ---- Variety engine: comedy lenses, life-area sparks, seasons, and memory of jokes already shown ---- */
+const LENSES = ["Exaggerate it to cosmic, epic scale", "The point of view of an object involved", "Narrated like a nature documentary", "Pitched like an epic movie trailer",
+  "Terrible advice or a fake life hack", "A petty rivalry or long-running grudge", "Total role reversal", "The secret inner monologue nobody says out loud",
+  "Corporate or bureaucratic framing (memos, policies, meetings)", "Live sports commentary", "An overly serious conspiracy theory", "The consequences the next morning",
+  "An unexpectedly wholesome twist", "How a knight, pirate, or caveman would see it", "Future archaeologists discovering it", "A tiny victory celebrated like a championship",
+  "Expectation vs. reality", "The one person who takes it WAY too seriously", "A pet's or a little kid's interpretation", "Overthinking it at 3 AM",
+  "As a video game mechanic (boss fight, side quest, loot drop)", "As a breaking news bulletin or weather forecast", "The villain origin story", "An absurdly specific detail that makes it painfully real",
+  "Comparing how two generations handle it", "The escalation: it starts small and gets ridiculous", "A dramatic soap-opera betrayal", "Treating it like a heist plan"];
+const SPARK_DOMAINS = ["grocery shopping", "group chats", "laundry", "self-checkout machines", "assembling furniture", "setting up a new phone", "passwords", "weather apps", "the gym",
+  "online reviews", "road trips", "leftovers", "houseplants", "neighbors", "returning something to a store", "meetings that could have been emails", "autocorrect", "kids' birthday parties",
+  "coffee", "Monday mornings", "package deliveries", "smart speakers", "family photos", "the junk drawer", "airport security", "snow days", "the sock drawer", "waiting rooms",
+  "following a recipe video", "printer ink", "sticky notes", "the thermostat war", "online shopping carts", "voicemail", "small talk", "yard work", "car washes", "library due dates",
+  "software updates", "parking lots", "the dentist", "fridge cleanout day", "car seat buckles", "the lost-and-found bin", "phone at 1% battery", "matching socks", "rainy recess",
+  "the school drop-off line", "board game night", "the last slice of pizza", "TV remotes", "cold coffee", "unread emails", "a squeaky chair", "cereal-to-milk ratio"];
+const SEASONS = ["New Year's resolutions, frozen car mornings, everyone back from break", "Valentine's cards, Groundhog Day, Super Bowl snacks, winter that won't end",
+  "spring break, St. Patrick's Day, daylight saving time, bracket season", "April Fools' pranks, spring rain, testing season", "the end-of-school countdown, Mother's Day, pollen everywhere",
+  "summer break, graduations, Father's Day", "fireworks, summer heat, vacation road trips", "back-to-school shopping, the last days of summer",
+  "back to school, pumpkin spice everything, the first fall leaves", "Halloween costumes, candy trading, fall leaves", "Thanksgiving (turkey, leftovers, the kids' table, Black Friday), the first snow, cozy season",
+  "winter holidays, gift wrapping, the winter break countdown, snow"];
+const seasonHint = () => SEASONS[new Date().getMonth()];
+const pickN = (arr, n, avoid = []) => { const fresh = arr.filter(x => !avoid.includes(x)); const src = fresh.length >= n ? fresh : arr; return [...src].sort(() => Math.random() - .5).slice(0, n); };
+const lensText = lenses => `COMEDY LENSES (springboards to escape the obvious joke; use a DIFFERENT one for most candidates): ${lenses.map(l => `"${l}"`).join(", ")}.`;
+const SEEN_KEY = "memeStudio.seen.v1";
+const normSit = s => String(s || "").toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim().slice(0, 140);
+function seenGet() { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || "{}"); } catch (e) { return {}; } }
+function seenFor(sit) { const v = seenGet()[normSit(sit)]; return { j: v?.j || [], t: v?.tids || [] }; }
+const jokeOf = layers => (layers || []).filter(l => (!l.type || l.type === "text") && String(l.text || "").trim()).map(l => String(l.text).trim()).join(" / ");
+function seenAdd(sit, specs) {
+  const k = normSit(sit); if (!k) return;
+  const all = seenGet(); const cur = all[k] || { j: [], tids: [] };
+  for (const sp of specs) { const j = jokeOf(sp.layers); if (j && !cur.j.includes(j)) cur.j.push(j); if (sp.tid && !(cur.tids || []).includes(sp.tid)) (cur.tids = cur.tids || []).push(sp.tid); }
+  all[k] = { j: cur.j.slice(-32), tids: (cur.tids || []).slice(-24), at: Date.now() };
+  const keep = Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0)).slice(0, 30);
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify(Object.fromEntries(keep.map(x => [x, all[x]])))); } catch (e) {}
+}
+function avoidText(sit) {
+  const { j, t } = seenFor(sit); if (!j.length) return "";
+  const names = t.map(id => tplById(id)?.name).filter(Boolean);
+  return `ALREADY SHOWN for this situation (the user has seen these and wants something NEW). Do NOT reuse these jokes, punchlines, wordplay, or the same core observation. Find different truths about the situation:
+${j.slice(-20).map(x => "- " + x).join("\n")}
+${names.length ? `Templates already used (pick mostly OTHER templates this time): ${names.slice(-12).join(", ")}.` : ""}
+`;
+}
+function newsText(n) {
+  return n ? `NEWS STORY this is based on (real, current): "${n.headline}". ${n.summary || ""}
+NEWS RULES: Joke about the situation and the very relatable human reactions to it. Punch at the absurdity, never at victims. Keep politics even-handed: no taking sides, no mocking a party or group. Don't name real people in captions.
+` : "";
+}
 function pickSurprise(th) {
   const pool = SURPRISE[th] || [`Something hilariously relatable in the world of ${th}`, `An everyday frustration, but set in ${th}`, `The most awkward moment possible in ${th}`, `A tiny victory that feels huge in ${th}`];
   const fresh = pool.filter(x => !recentSurprises.includes(x));
   const pick = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))];
-  recentSurprises.push(pick); if (recentSurprises.length > 6) recentSurprises.shift();
+  noteRecent(pick);
   return pick;
 }
 let theme = "All", tone = "Relatable";
@@ -1627,15 +1726,21 @@ const RULES = `RULES:
 - Use each template the way it is actually used online (the examples show the format; never copy them).
 - Each box under 12 words. Land the punchline in the last box. Be specific and surprising, not generic.
 - No em dashes. No hashtags. Don't name real people.`;
-function genPrompt(situation, th, pool, surprise = false) {
+function genPrompt(situation, th, pool, { surprise = false, spark = null, news = null, lenses = pickN(LENSES, 5) } = {}) {
+  const sit = surprise
+    ? `SITUATION: Invent ONE fresh, specific, funny, relatable situation (one sentence, under 20 words)${th === "All" ? "" : " set in the theme below"}.
+SPARK to start from: ${spark ? `"${spark.domain}", seen through the lens "${spark.lens}"` : "anything unexpected"}.${spark && spark.season ? ` Optional seasonal flavor if it fits naturally: ${spark.season}.` : ""}
+It must be a totally different area of life from these recent ones: ${JSON.stringify(recentSurprises.slice(-10))}. Return it in "situation".`
+    : `SITUATION: "${situation}"`;
   return `You are a top internet meme writer who knows exactly how each classic meme template is used.
 
-${surprise ? `SITUATION: Invent ONE fresh, specific, funny, relatable situation that fits the theme below (one sentence, under 20 words). Make it different from these recent ones: ${JSON.stringify(recentSurprises.slice(-6))}. Return it in "situation".` : `SITUATION: "${situation}"`}
-THEME / UNIVERSE: ${th === "All" ? "A versatile mix of classic formats." : `${th}. Prefer templates tagged for it and work in its tropes and references.`}
+${sit}
+${newsText(news)}THEME / UNIVERSE: ${th === "All" ? "A versatile mix of classic formats." : `${th}. Prefer templates tagged for it and work in its tropes and references.`}
 TONE: ${tone}
 ${myWorldText()}${safety()}
-
-PROCESS: Brainstorm 8 candidate memes, each a DIFFERENT comedic angle on the situation (no template more than twice). Then honestly score each candidate 1 to 10 for how funny it is and how well the joke fits that template's real usage.
+${surprise ? "" : avoidText(situation)}
+PROCESS: Brainstorm 8 candidate memes, each a DIFFERENT comedic angle on the situation (no template more than twice). Skip the first joke everyone would make. ${lensText(lenses)}
+Then honestly score each candidate 1 to 10 for how funny and surprising it is and how well the joke fits that template's real usage.
 
 CATALOG:
 ${catalogLines(pool)}
@@ -1674,6 +1779,7 @@ async function renderResults(list, ctx = null) {
   const g = $("#results");
   const specs = await Promise.all(list.map(m => specFromTemplate(m.t, m.captions)));
   specs.forEach(s => { if (ctx) s.ctx = ctx; });
+  if (ctx) seenAdd(ctx.situation, specs);
   g.innerHTML = "";
   specs.forEach(s => {
     const card = memeCard(s); g.appendChild(card);
@@ -1681,30 +1787,165 @@ async function renderResults(list, ctx = null) {
     if (needsMap(t)) mapTemplate(t).then(ok => { if (ok && card.isConnected) { s.layers = relayout(s.layers, t.zones); card.replaceWith(memeCard(s)); } });
   });
 }
-async function generate({ surprise = false } = {}) {
+let lastGen = null; // { situation, theme, news }
+async function generate({ surprise = false, news = null, retry = false } = {}) {
   let p = $("#prompt").value.trim();
   const th = themeLabel();
+  if (!news && lastGen && lastGen.news && normSit(lastGen.situation) === normSit(p)) news = lastGen.news; // keep the story attached on Try again
   if (!p && !surprise) {
     if (th !== "All") p = `Something hilariously relatable in the world of ${th}`;
     else { toast("Type a situation first, or tap Surprise me.", "err"); $("#prompt").focus(); return; }
   }
-  const btn = $("#generateBtn"); busy(btn, true, "⏳ Cooking up memes…");
+  const btn = retry ? $("#retryBtn") : $("#generateBtn");
+  busy(btn, true, retry ? "⏳ Finding new angles…" : "⏳ Cooking up memes…");
+  $("#generateBtn").disabled = $("#retryBtn").disabled = true;
   $("#results").innerHTML = ["😂", "🤔", "😎", "🔥"].map(x => `<div class="skel"><span>${x}</span></div>`).join("");
-  $("#resultsTitle").textContent = "Matching templates & writing punchlines…";
+  $("#resultsTitle").textContent = retry ? "Throwing out the old jokes, trying new angles…" : "Matching templates & writing punchlines…";
+  if (retry) $("#results").scrollIntoView({ behavior: "smooth", block: "start" });
   let memes = null;
   let aiErr = null;
-  if (hasAI()) { try { const out = await askJSON(genPrompt(p, th, templatePool(th), surprise)); memes = validMemes(out.candidates || out.memes);
-    if (surprise) { p = noDash(out.situation || "").slice(0, 200) || pickSurprise(th); if (out.situation) { recentSurprises.push(p); if (recentSurprises.length > 6) recentSurprises.shift(); } $("#prompt").value = p; } if (!memes) aiErr = { message: "Gemini picked templates that don't exist." }; } catch (e) { aiErr = e; } }
+  if (hasAI()) {
+    try {
+      const pool = templatePool(th).sort(() => Math.random() - .5); // shuffled so the catalog order doesn't anchor the same picks
+      const spark = surprise ? { domain: pickN(SPARK_DOMAINS, 1, recentSurprises)[0], lens: pickN(LENSES, 1)[0], season: Math.random() < .4 ? seasonHint() : "" } : null;
+      const out = await askJSON(genPrompt(p, th, pool, { surprise, spark, news }), { temperature: 1.15 });
+      const shown = new Set(surprise ? [] : seenFor(p).j);
+      const cands = (out.candidates || out.memes || []);
+      const fresh = Array.isArray(cands) ? cands.filter(c => !shown.has((c.captions || []).map(x => noDash(x).trim()).filter(Boolean).join(" / "))) : cands;
+      memes = validMemes(fresh && fresh.length >= 4 ? fresh : cands);
+      if (surprise) { p = noDash(out.situation || "").slice(0, 200) || pickSurprise(th); if (out.situation) noteRecent(p); if (spark) noteRecent(spark.domain); $("#prompt").value = p; }
+      if (!memes) aiErr = { message: "Gemini picked templates that don't exist." };
+    } catch (e) { aiErr = e; }
+  }
   const usedAI = !!memes;
   if (surprise && !$("#prompt").value.trim()) { p = pickSurprise(th); $("#prompt").value = p; }
   $("#prompt").placeholder = "e.g. Day four of indoor recess and the LEGO bin has formed a government";
   if (!memes) memes = fallbackMemes(p, th);
-  await renderResults(memes, { situation: p, theme: th });
+  lastGen = { situation: p, theme: th, news: news || null };
+  await renderResults(memes, { situation: p, theme: th, ...(news ? { news } : {}) });
   pushHistoryFromGrid();
-  $("#resultsTitle").textContent = usedAI ? `Fresh memes · ${th === "All" ? tone : th + " · " + tone}` : "Quick memes (instant mode)";
-  toast(usedAI ? "4 fresh memes, hot off the press!" : hasAI() ? `Quick memes instead. ${aiErr && aiErr.message ? aiErr.message : "AI didn't answer."}` : "Instant mode. Add a Gemini key for AI captions.", usedAI ? "ok" : "");
+  $("#resultsTitle").textContent = usedAI ? `${news ? "📰 " : ""}Fresh memes · ${th === "All" ? tone : th + " · " + tone}` : "Quick memes (instant mode)";
+  $("#retryRow").classList.remove("hidden");
+  toast(usedAI ? (retry ? "4 brand-new takes!" : "4 fresh memes, hot off the press!") : hasAI() ? `Quick memes instead. ${aiErr && aiErr.message ? aiErr.message : "AI didn't answer."}` : "Instant mode. Add a Gemini key for AI captions.", usedAI ? "ok" : "");
+  busy(btn, false);
+  $("#generateBtn").disabled = $("#retryBtn").disabled = false;
+}
+$("#retryBtn").onclick = () => generate({ retry: true });
+
+/* ---- 💡 Inspire me: a handful of idea chips to pick from ---- */
+function localIdeas(th) {
+  const base = SURPRISE[th] || SURPRISE.All;
+  const mixed = [...pickN(base, 3, recentSurprises), ...pickN(SPARK_DOMAINS, 3, recentSurprises).map(d => `${pickN(LENSES, 1)[0]}: ${d}`)];
+  return mixed.map(idea => ({ emoji: "✨", idea }));
+}
+function renderIdeas(ideas) {
+  const box = $("#ideaChips");
+  box.innerHTML = ideas.map((x, i) => `<button class="sample" data-i="${i}">${esc((x.emoji || "✨") + " " + x.idea)}</button>`).join("") + `<button class="link" id="ideasMore">↻ more ideas</button>`;
+  box._ideas = ideas; box.classList.remove("hidden");
+}
+async function inspire() {
+  const th = themeLabel(), btn = $("#ideasBtn");
+  if (!hasAI()) return renderIdeas(localIdeas(th));
+  busy(btn, true, "⏳");
+  try {
+    const domains = pickN(SPARK_DOMAINS, 6, recentSurprises), lenses = pickN(LENSES, 6);
+    const out = await askJSON(`You are a brilliant, playful meme writer pitching ideas.
+Pitch 6 meme situations, each one sentence under 18 words, specific and relatable. Every idea must come from a DIFFERENT area of life and a DIFFERENT comedic lens. Surprise me; skip the obvious.
+THEME / UNIVERSE: ${th === "All" ? "anything" : th}
+SPRINGBOARDS (one per idea, loosely): ${domains.map((d, i) => `${d} + "${lenses[i]}"`).join("; ")}
+SEASON right now (use for at most 2 ideas): ${seasonHint()}
+Not like these recent ones: ${JSON.stringify(recentSurprises.slice(-10))}
+TONE: ${tone}
+${myWorldText()}${safety()}
+No em dashes. Don't name real people.
+Reply with ONLY JSON: {"ideas":[{"emoji":"🦃","idea":"..."}]}`, { temperature: 1.25 });
+    const ideas = (out.ideas || []).filter(x => x && x.idea).map(x => ({ emoji: String(x.emoji || "✨").slice(0, 4), idea: noDash(x.idea).slice(0, 160) })).slice(0, 6);
+    renderIdeas(ideas.length ? ideas : localIdeas(th));
+  } catch (e) { renderIdeas(localIdeas(th)); if (!e || !["badkey", "nokey"].includes(e.code)) toast("AI ideas didn't come through, so here are some quick ones.", ""); }
   busy(btn, false);
 }
+$("#ideasBtn").onclick = inspire;
+$("#ideaChips").onclick = e => {
+  if (e.target.closest("#ideasMore")) return inspire();
+  const b = e.target.closest("[data-i]"); if (!b) return;
+  const x = $("#ideaChips")._ideas[+b.dataset.i]; $("#prompt").value = x.idea; noteRecent(x.idea);
+  generate();
+};
+
+/* ---- 📰 News: today's top stories, or a link / pasted article ---- */
+const NEWS_SAFE = `SKIP anything about death, injury, disasters, violence, crime, war, abuse, serious illness, or other tragedy. Avoid divisive partisan fights; a political story is only OK if everyone can laugh at it (like a process quirk), never taking a side.`;
+let newsStories = [];
+$("#newsBtn").onclick = () => { const p = $("#newsPanel"); p.classList.toggle("hidden"); if (!p.classList.contains("hidden")) $("#newsUrl").focus(); };
+function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return ""; } }
+function renderStories(list) {
+  newsStories = list;
+  const srcs = (lastGrounding?.groundingChunks || []).map(c => c.web).filter(w => w && w.uri).slice(0, 6);
+  $("#newsList").innerHTML = list.map((n, i) => `<div class="story"><b>${esc((n.emoji || "📰") + " " + n.headline)}</b><span>${esc(n.summary || "")}</span>
+    <div class="row">${/^https?:/.test(n.url || "") ? `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(hostOf(n.url) || "source")} ↗</a>` : "<span></span>"}<button class="btn small" data-i="${i}">😂 Meme it</button></div></div>`).join("")
+    + (srcs.length ? `<p class="sub" style="grid-column:1/-1;margin:0">Found via Google Search: ${srcs.map(w => `<a href="${esc(w.uri)}" target="_blank" rel="noopener">${esc(w.title || hostOf(w.uri))}</a>`).join(" · ")}</p>` : "");
+}
+$("#newsList").onclick = e => {
+  const b = e.target.closest("[data-i]"); if (!b) return;
+  memeStory(newsStories[+b.dataset.i]);
+};
+function memeStory(n) {
+  if (!n) return;
+  $("#prompt").value = noDash(n.angle || n.headline).slice(0, 200);
+  generate({ news: { headline: noDash(n.headline).slice(0, 160), summary: noDash(n.summary || "").slice(0, 400), url: n.url || "" } });
+}
+const cleanStory = x => x && x.headline ? { emoji: String(x.emoji || "📰").slice(0, 4), headline: noDash(x.headline).slice(0, 160), summary: noDash(x.summary || "").slice(0, 300), angle: noDash(x.angle || "").slice(0, 200), url: String(x.url || "") } : null;
+$("#newsTop").onclick = async () => {
+  if (!hasAI()) return openSettings();
+  const btn = $("#newsTop"); busy(btn, true, "⏳ Reading the news…");
+  $("#newsPaste").classList.add("hidden");
+  try {
+    const today = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    const out = await askJSON(`Today is ${today}. Use Google Search to find today's top news stories: a mix of national news, science, technology, sports, weather, entertainment, and quirky or offbeat news.
+Pick 8 that someone could make a good-natured, lighthearted meme about.
+${NEWS_SAFE}
+For each story give: "headline" (under 14 words, in your own words), "summary" (one neutral sentence), "angle" (a relatable meme situation inspired by it, under 20 words, no real names), "emoji", and "url" (the article URL if you have it, otherwise "").
+Reply with ONLY JSON, no markdown: {"stories":[{"emoji":"🚀","headline":"...","summary":"...","angle":"...","url":""}]}`, { tools: [{ google_search: {} }] });
+    const list = (out.stories || []).map(cleanStory).filter(Boolean).slice(0, 8);
+    if (!list.length) throw { message: "No meme-friendly stories came back. Try again in a bit." };
+    renderStories(list);
+  } catch (e) { if (!e || !["badkey", "nokey"].includes(e.code)) toast(e && e.message ? `News: ${e.message}` : "Couldn't fetch the news.", "err"); }
+  busy(btn, false);
+};
+async function storyFrom(prompt, tools) {
+  const out = await askJSON(`${prompt}
+${NEWS_SAFE.replace("SKIP anything", "If the story is mainly")}
+If it is one of those sensitive kinds of stories, reply {"ok":false,"reason":"sensitive"}. If you can't read it, reply {"ok":false,"reason":"unreadable"}.
+Otherwise reply with ONLY JSON: {"ok":true,"emoji":"📰","headline":"under 14 words, your own words","summary":"two neutral sentences","angle":"a relatable meme situation inspired by it, under 20 words, no real names"}`, tools ? { tools } : { timeoutMs: 40000 });
+  return out;
+}
+function handleStory(out, urlFallback = "") {
+  if (out && out.ok !== false && out.headline) { const n = cleanStory({ ...out, url: urlFallback }); renderStories([n]); memeStory(n); return true; }
+  if (out && out.reason === "sensitive") { toast("That story is too serious to meme. Try a different one.", "err"); return true; }
+  return false;
+}
+$("#newsLink").onclick = async () => {
+  if (!hasAI()) return openSettings();
+  const url = $("#newsUrl").value.trim();
+  if (!/^https?:\/\/\S+\.\S+/.test(url)) { toast("Paste a full link that starts with https://", "err"); return $("#newsUrl").focus(); }
+  const btn = $("#newsLink"); busy(btn, true, "⏳ Reading the story…");
+  try {
+    const out = await storyFrom(`Read this news article using your URL tool: ${url}`, [{ url_context: {} }]);
+    if (!handleStory(out, url)) { $("#newsPaste").classList.remove("hidden"); $("#newsText").focus(); }
+  } catch (e) { if (!e || !["badkey", "nokey"].includes(e.code)) { $("#newsPaste").classList.remove("hidden"); toast(e && e.message ? `Link: ${e.message}` : "Couldn't read that link.", "err"); } }
+  busy(btn, false);
+};
+$("#newsTextGo").onclick = async () => {
+  if (!hasAI()) return openSettings();
+  const txt = $("#newsText").value.trim();
+  if (txt.length < 80) { toast("Paste a bit more of the article first.", "err"); return; }
+  const btn = $("#newsTextGo"); busy(btn, true, "⏳ Reading…");
+  try {
+    const out = await storyFrom(`Here is a news article:\n"""${txt.slice(0, 9000)}"""`, null);
+    if (!handleStory(out, $("#newsUrl").value.trim())) toast("Couldn't make sense of that text. Try pasting the main part of the article.", "err");
+    else $("#newsPaste").classList.add("hidden");
+  } catch (e) { if (!e || !["badkey", "nokey"].includes(e.code)) toast(e && e.message ? e.message : "Couldn't read that text.", "err"); }
+  busy(btn, false);
+};
 
 /* ================= Templates tab ================= */
 const CATS = ["All", "The Simpsons", "Aliens & Sci-Fi", "The Simpsons & Cartoons", "Politics & Debates", "Gaming & Tech", "Animals & Pets", "Movies & TV", "School & Classroom"];
