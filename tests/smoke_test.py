@@ -32,7 +32,8 @@ class FakeGemini:
     def __init__(self):
         self.calls = []
         self.bodies = []
-        self.fail = {}  # model -> status to return
+        self.fail = {}
+        self.tool_fail = None  # status to return for requests that use tools  # model -> status to return
     async def handle(self, route):
         r = route.request
         if r.method == "GET":
@@ -44,6 +45,8 @@ class FakeGemini:
         text = parts[0]["text"]
         self.calls.append((model, text))
         self.bodies.append(body)
+        if self.tool_fail and body.get("tools"):
+            return await route.fulfill(status=self.tool_fail, headers=CORS, body=json.dumps({"error": {"message": "Quota exceeded for metric: search_grounding_request, limit: 0 PerDay"}}))
         if model in self.fail:
             return await route.fulfill(status=self.fail[model], headers=CORS, body=json.dumps({"error": {"message": "Quota exceeded for metric PerDay" if self.fail[model] == 429 else "high demand"}}))
         if '"ok":true' in text and len(text) < 60:
@@ -57,6 +60,9 @@ class FakeGemini:
             out = {"candidates": [{"templateId": "55311130", "captions": ["SWAPPED", "This is fine"], "score": 8}]}
         elif "Pitch 6 meme situations" in text:
             out = {"ideas": [{"emoji": "🦃", "idea": f"Idea number {i}"} for i in range(6)]}
+        elif "real headlines from the last day" in text:
+            out = {"stories": [{"i": 0, "emoji": "🚀", "headline": "Rocket lands on a barge", "summary": "A rocket landed.", "angle": "When the landing is smoother than my Monday"},
+                               {"i": 1, "emoji": "🧑‍💻", "headline": "New text editor released", "summary": "An editor.", "angle": "Switching editors for the 9th time"}]}
         elif "find today's top news stories" in text:
             out = {"stories": [{"emoji": "🚀", "headline": "Rocket lands on a barge", "summary": "A rocket landed.", "angle": "When the landing is smoother than my Monday", "url": "https://example.com/rocket"},
                                {"emoji": "🐧", "headline": "Penguin escapes zoo", "summary": "Briefly.", "angle": "Penguin plans a weekend", "url": ""}]}
@@ -84,6 +90,17 @@ async def imgflip_img(route):
     body = BANNER if "2kbn1e" in route.request.url else FIX  # Surprised Pikachu gets a white top banner
     await route.fulfill(status=200, headers={**CORS, "content-type": "image/jpeg"}, body=body)
 
+WIKI_HTML = """<div class="current-events-content description">
+<p><b>Armed conflicts and attacks</b></p><ul><li><a href="/wiki/X">Some war</a><ul><li>Something terrible happened in a battle somewhere today. <a class="external text" href="https://example.com/war">(BBC)</a></li></ul></li></ul>
+<p><b>Science and technology</b></p><ul><li>A reusable rocket lands on a drone ship for the 500th time. <a class="external text" href="https://example.com/rocket">(AP)</a></li></ul>
+</div>"""
+async def wiki(route):
+    await route.fulfill(status=200, headers=CORS, body=json.dumps({"parse": {"text": WIKI_HTML}}))
+async def hn(route):
+    u = route.request.url
+    body = [101] if "topstories" in u else {"id": 101, "title": "Show HN: A new text editor written in a weekend", "url": "https://example.com/editor"}
+    await route.fulfill(status=200, headers=CORS, body=json.dumps(body))
+
 async def main():
     httpd = serve()
     base = f"http://localhost:{httpd.server_address[1]}/index.html"
@@ -93,6 +110,8 @@ async def main():
         ctx = await b.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
         await ctx.route("**/generativelanguage.googleapis.com/**", gem.handle)
         await ctx.route("**/api.imgflip.com/**", imgflip_api)
+        await ctx.route("**/en.wikipedia.org/**", wiki)
+        await ctx.route("**/hacker-news.firebaseio.com/**", hn)
         await ctx.route("**/i.imgflip.com/**", imgflip_img)
         await ctx.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body="", headers={"content-type": "text/css"}))
         pg = await ctx.new_page()
@@ -170,8 +189,10 @@ async def main():
         await pg.click("#newsBtn"); gem.bodies.clear(); gem.calls.clear()
         await pg.click("#newsTop"); await pg.wait_for_timeout(1200)
         check("news stories listed", await pg.locator("#newsList .story").count() == 2)
-        nb = next((b for b in gem.bodies if "top news" in b["contents"][0]["parts"][0]["text"]), {})
-        check("news uses google_search tool (no JSON mode)", nb.get("tools") == [{"google_search": {}}] and "responseMimeType" not in nb.get("generationConfig", {}), nb.get("tools"))
+        np0 = next((t for m, t in gem.calls if "real headlines" in t), "")
+        check("news uses real headlines (Wikipedia + HN), no paid Search tool", "drone ship" in np0 and "text editor" in np0 and not any(b.get("tools") for b in gem.bodies), np0[:160])
+        check("news skips conflict/tragedy categories", "battle" not in np0)
+        check("story links to the real source", await pg.locator("#newsList .story a").first.get_attribute("href") == "https://example.com/rocket")
         gem.calls.clear()
         await pg.locator("#newsList .story [data-i]").first.click(); await pg.wait_for_timeout(1500)
         np = next((t for m, t in gem.calls if "Brainstorm 8" in t), "")
@@ -184,6 +205,13 @@ async def main():
         lb = next((b for b in gem.bodies if "URL tool" in b["contents"][0]["parts"][0]["text"]), {})
         check("link uses url_context tool", lb.get("tools") == [{"url_context": {}}], lb.get("tools"))
         check("link story becomes the prompt", await pg.input_value("#prompt") == "Chasing my motivation down a hill")
+
+        # A tool quota (free keys) must not rest the models or break normal generation
+        gem.tool_fail = 429
+        await pg.fill("#newsUrl", "https://example.com/paywalled"); await pg.click("#newsLink"); await pg.wait_for_timeout(1200)
+        check("tool quota shows paste-text fallback", await pg.is_visible("#newsPaste"))
+        check("tool quota doesn't rest any model", not await pg.evaluate("['gemini-3.8-flash','gemini-3.7-flash','gemini-3.5-flash-lite'].some(coolingDown)"))
+        gem.tool_fail = None
 
         # Editor: undo/redo, emoji, image, resize
         await pg.locator("#results .meme-card canvas").first.click(); await pg.wait_for_timeout(400)
@@ -214,6 +242,19 @@ async def main():
         await pg.fill("#prompt", "quota"); await pg.click("#generateBtn"); await pg.wait_for_timeout(2000)
         check("quota error skips to next model", "Fresh memes" in await pg.inner_text("#resultsTitle"))
         check("rate-limited model is resting", await pg.evaluate("coolingDown('gemini-3.8-flash')"))
+
+        # Two-screen layout (Surface Duo spanned / wide landscape)
+        await pg.set_viewport_size({"width": 1400, "height": 900}); await pg.wait_for_timeout(400)
+        check("two-screen mode turns on when spanned", await pg.evaluate("document.documentElement.classList.contains('dual')"))
+        check("memes move to the right screen", await pg.evaluate("$('#dualRight').contains($('#results'))"))
+        await pg.click("[data-tab=templates]"); await pg.wait_for_timeout(300)
+        check("memes stay visible on right while browsing templates", await pg.is_visible("#results"))
+        await pg.locator("#tplGrid .tpl-card").first.click(); await pg.wait_for_timeout(600)
+        ed = await pg.evaluate("(() => { const r = $('#editor').getBoundingClientRect(); return { left: r.left, w: r.width }; })()")
+        check("editor docks on the right screen", ed["left"] > 400 and ed["w"] < 1000, ed)
+        await pg.click("#edClose")
+        await pg.set_viewport_size({"width": 400, "height": 860}); await pg.wait_for_timeout(400)
+        check("back to one screen when folded", await pg.evaluate("!document.documentElement.classList.contains('dual') && $('#view-generate').contains($('#results'))"))
 
         check("no JavaScript errors", not errs, errs[:3])
         await ctx.close()

@@ -13,7 +13,8 @@ A personal meme maker: classic templates, AI captions (Google Gemini), a full ca
 - **🎲 Surprise me:** a random spark (a corner of everyday life × a comedy lens, plus the season) so each surprise is a whole different take.
 - **💡 Inspire me:** 6 idea chips from different areas of life; tap one to make memes.
 - **🔄 Try again:** reruns the whole prompt. The app remembers jokes and templates already shown for each prompt and tells the AI to avoid them; random comedy lenses push it to new angles (🔁 New take does the same).
-- **📰 News:** today's meme-friendly top stories (Gemini + Google Search) or any pasted link (Gemini URL reading), with a paste-the-text fallback. Skips tragedies; politics stays even-handed.
+- **📰 News:** real headlines from Wikipedia's Current Events page and Hacker News (works on free Gemini keys), or any pasted link (Gemini URL reading), with a paste-the-text fallback. Skips tragedies; politics stays even-handed.
+- **📱 Surface Duo / foldables:** edge-to-edge with safe-area padding on one screen. Spanned across both screens, the app runs on the left and your memes (and the editor) live on the right, split around the hinge.
 - **Editor:** drag, corner-resize, undo/redo (Ctrl+Z), auto-fit text, emoji stickers, image layers, top-bar caption style, ✨ Punch up.
 - **Robust:** auto-discovers current Gemini models, skips busy/over-quota models, remembers what works, tracks today's usage.
 - **Offline-ready PWA:** service worker caches the app and templates; shows a "new version ready" banner after updates.

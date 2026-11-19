@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Meme Studio</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -102,6 +102,38 @@ textarea:focus,input[type=text]:focus,select:focus{box-shadow:0 0 0 3px var(--ye
 .story a{font:700 12px Inter,sans-serif;color:#c2410c}
 .news-note{margin:10px 0 0;font-size:12px}
 .retry-row{display:flex;flex-direction:column;align-items:center;gap:6px;margin:16px 0 6px;text-align:center}
+.out-pane{display:flex;flex-direction:column;gap:22px}
+/* Edge-to-edge: keep content clear of curved edges, hinges, and system bars */
+header.top .wrap,main.wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+header.top{padding-top:env(safe-area-inset-top)}
+.tabs.more-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
+.tabs.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 44px),transparent)}
+.tabs.more-l:not(.more-r){-webkit-mask-image:linear-gradient(90deg,transparent,#000 30px);mask-image:linear-gradient(90deg,transparent,#000 30px)}
+.dual-right{display:none}
+.dual-empty{text-align:center;padding:40px 18px;border:3px dashed var(--ink);border-radius:18px;background:#fffdf7;font-weight:700}
+.dual-empty div{font-size:44px;margin-bottom:8px}
+/* ===== Two-screen mode (Surface Duo spanned, foldables, wide landscape) =====
+   Left screen: the app (header, tabs, tools). Right screen: your memes, and the editor docks there. */
+html.dual,html.dual body{height:100%;overflow:hidden}
+html.dual header.top{position:fixed;top:0;left:0;width:var(--pa);border-right:3px solid var(--ink)}
+html.dual header.top .wrap{max-width:none}
+html.dual main.wrap{position:fixed;top:var(--hdr);bottom:0;left:0;width:var(--pa);max-width:none;margin:0;overflow-y:auto;overscroll-behavior:contain;padding-top:18px;padding-bottom:40px;padding-left:max(14px,env(safe-area-inset-left));padding-right:14px;border-right:3px solid var(--ink);background:var(--paper)}
+html.dual footer{display:none}
+html.dual .dual-right{display:block;position:fixed;top:0;bottom:0;left:calc(var(--pa) + var(--hinge));right:0;overflow-y:auto;overscroll-behavior:contain;padding:18px max(14px,env(safe-area-inset-right)) 40px 14px;background:var(--paper);border-left:3px solid var(--ink)}
+html.dual .dual-right .grid4{grid-template-columns:repeat(2,minmax(0,1fr))}
+html.dual .dual-right .results-head{position:sticky;top:-18px;z-index:3;background:var(--paper);padding:10px 0 8px;margin-top:-10px}
+html.dual .card-head{flex-direction:column}
+html.dual #editor{left:calc(var(--pa) + var(--hinge));right:0;padding:0;background:var(--paper);border-left:3px solid var(--ink);align-items:stretch}
+html.dual #editor .editor{max-width:none;min-height:100%;margin:0;border:none;border-radius:0;box-shadow:none}
+html.dual #editor .editor-head,html.dual #editor .editor-foot{border-radius:0;position:sticky;z-index:4}
+html.dual #editor .editor-head{top:0}
+html.dual #editor .editor-foot{bottom:0}
+html.dual #editor .editor-body{grid-template-columns:1fr}
+html.dual #edCanvas{max-height:50vh}
+html.dual .overlay:not(#editor){right:auto;width:var(--pa)}
+html.dual #toasts{left:calc(var(--pa) / 2);width:min(calc(var(--pa) - 24px),440px)}
+html.dual #updateBar{left:calc(var(--pa) / 2);max-width:calc(var(--pa) - 20px)}
+html.dual .news-list{grid-template-columns:1fr}
 .results-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .grid4{display:grid;align-items:start;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
 .meme-card{background:#fff;border:3px solid var(--ink);border-radius:16px;box-shadow:var(--shadow);padding:10px;display:flex;flex-direction:column;gap:10px;animation:pop .3s ease both}
@@ -271,7 +303,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
           <button class="btn small" id="newsTextGo" style="margin-top:8px">📝 Meme this text</button>
         </div>
         <div id="newsList" class="news-list"></div>
-        <p class="sub news-note">Skips tragedies, violence, and disasters. Jokes punch at the situation, never at people who got hurt, and politics stays even-handed.</p>
+        <p class="sub news-note">Headlines come from Wikipedia's Current Events page and Hacker News. Skips tragedies, violence, and disasters. Jokes punch at the situation, never at people who got hurt, and politics stays even-handed.</p>
       </div>
       <div class="row-label"><span>Theme / Universe</span></div>
       <div class="chips" id="themeChips"></div>
@@ -287,10 +319,12 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
         </div>
       </div>
     </div>
+    <div id="outPane" class="out-pane">
     <div class="results-head"><h3 id="resultsTitle">Starter memes</h3><span class="sub">Tap any meme to edit it</span></div>
     <div class="grid4" id="results"></div>
     <div class="retry-row hidden" id="retryRow"><button class="btn big" id="retryBtn">🔄 Try again: 4 brand-new takes</button><span class="sub">Same prompt, new angles. It won't repeat the jokes you've already seen.</span></div>
     <div id="historyStrip" class="hidden"><div class="row-label" style="margin:0 0 8px"><span>🕘 Recent</span></div><div class="history" id="historyList"></div></div>
+    </div>
   </section>
 
   <!-- TEMPLATES -->
@@ -409,6 +443,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:0 16px 30px}
     <div class="grid4" id="vaultGrid"></div>
   </section>
 </main>
+<aside id="dualRight" class="dual-right" aria-label="Your memes"></aside>
 <footer>Meme Studio · Personal edition · Templates load from imgflip.com · No watermarks</footer>
 
 <!-- EDITOR -->
@@ -1207,6 +1242,7 @@ function noteQuota(model, msg) {
   const until = daily ? new Date(new Date().setHours(24, 5, 0, 0)).getTime() : Date.now() + 90 * 1000;
   u.cool[model] = until; usageSave(u);
 }
+try { if (!localStorage.getItem("memeStudio.coolReset.1119")) { const u = usageGet(); u.cool = {}; usageSave(u); localStorage.setItem("memeStudio.coolReset.1119", "1"); } } catch (e) {}
 const coolingDown = model => (usageGet().cool[model] || 0) > Date.now();
 function orderByQuota(list) { return [...list.filter(m => !coolingDown(m)), ...list.filter(m => coolingDown(m))]; }
 
@@ -1239,6 +1275,10 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
         if (r.status === 400 && lowThink && /thinking/i.test(txt)) { noThinkCfg.add(model); return gemini(parts, json, { only: model, timeoutMs, onAttempt, tools, temperature }); }
         const e = gemErr(r.status, txt);
         if (e.code === "badkey") { toast(e.message, "err"); throw e; }
+        if (r.status === 429 && tools) {
+          // A tool quota (Search / link reader), not the model's own quota: don't rest the model, and don't burn every model on it.
+          throw { code: "toolquota", message: tools.some(t => t.google_search) ? "Gemini's Google Search tool isn't included with free API keys." : "Gemini's link reader isn't available for this key right now." };
+        }
         if (r.status >= 500) e.message = `${model} is busy right now (${r.status}).`;
         if (r.status === 429) { e.message = `${model}: ${e.message}.`; noteQuota(model, txt); if (goodModel() === model) { try { localStorage.removeItem(GOOD_MODEL_KEY); } catch (x) {} } }
         onAttempt && onAttempt(model, "fail", e.message, Date.now() - t0);
@@ -1256,7 +1296,7 @@ async function gemini(parts, json = true, { only = null, timeoutMs = 25000, onAt
       onAttempt && onAttempt(model, "ok", "", Date.now() - t0);
       return text;
     } catch (e) {
-      if (e && e.code === "badkey") throw e;
+      if (e && (e.code === "badkey" || e.code === "toolquota")) throw e;
       last = e && e.message ? e : { message: "Couldn't reach Gemini (network)." };
       if (e && e.code === "timeout") last = { code: "timeout", message: `${model} was too slow (over ${timeoutMs / 1000}s).` };
       onAttempt && onAttempt(model, "fail", last.message, Date.now() - t0);
@@ -1894,21 +1934,74 @@ function memeStory(n) {
   generate({ news: { headline: noDash(n.headline).slice(0, 160), summary: noDash(n.summary || "").slice(0, 400), url: n.url || "" } });
 }
 const cleanStory = x => x && x.headline ? { emoji: String(x.emoji || "📰").slice(0, 4), headline: noDash(x.headline).slice(0, 160), summary: noDash(x.summary || "").slice(0, 300), angle: noDash(x.angle || "").slice(0, 200), url: String(x.url || "") } : null;
+/* Real headlines from free sources the browser can read directly (no paid Search tool needed). */
+const NEWS_SKIP_CATS = /conflict|attack|disaster|accident|crime|law|terror|war\b/i;
+async function wikiDay(d) {
+  const title = `Portal:Current_events/${d.getUTCFullYear()}_${d.toLocaleString("en-US", { month: "long", timeZone: "UTC" })}_${d.getUTCDate()}`;
+  const r = await tfetch(`https://en.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2&prop=text&origin=*&page=${encodeURIComponent(title)}`, {}, 12000);
+  const j = await r.json(); const html = j?.parse?.text; if (!html) return [];
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const root = doc.querySelector(".current-events-content") || doc.body;
+  const out = []; let cat = "News";
+  const walk = el => {
+    for (const c of el.children) {
+      if (c.matches("p, .current-events-content-heading, [role=heading]") && !c.querySelector("ul")) { const t = c.textContent.trim(); if (t && t.length < 60) cat = t; }
+      else if (c.tagName === "UL") {
+        c.querySelectorAll("li").forEach(li => {
+          if (li.querySelector("ul")) return;
+          const src = li.querySelector("a.external"); const clone = li.cloneNode(true);
+          clone.querySelectorAll("a.external, sup").forEach(x => x.remove());
+          const text = clone.textContent.replace(/\s+/g, " ").replace(/\(\s*\)/g, "").trim();
+          if (text.length > 30 && !NEWS_SKIP_CATS.test(cat)) out.push({ cat, text: text.slice(0, 300), url: src ? src.getAttribute("href") : "" });
+        });
+      } else if (c.children.length) walk(c);
+    }
+  };
+  walk(root);
+  return out;
+}
+async function hnTop(n = 15) {
+  const ids = await (await tfetch("https://hacker-news.firebaseio.com/v0/topstories.json", {}, 10000)).json();
+  const items = await Promise.all(ids.slice(0, n).map(id => tfetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, {}, 10000).then(r => r.json()).catch(() => null)));
+  return items.filter(x => x && x.title && x.url).map(x => ({ cat: "Tech & internet", text: x.title, url: x.url }));
+}
+async function gatherHeadlines() {
+  const now = new Date(), yday = new Date(Date.now() - 864e5);
+  const res = await Promise.allSettled([wikiDay(now), wikiDay(yday), hnTop()]);
+  const [a, b, c] = res.map(x => x.status === "fulfilled" ? x.value : []);
+  const seen = new Set();
+  return [...a, ...b, ...c].filter(x => !seen.has(x.text) && seen.add(x.text)).slice(0, 70);
+}
 $("#newsTop").onclick = async () => {
   if (!hasAI()) return openSettings();
   const btn = $("#newsTop"); busy(btn, true, "⏳ Reading the news…");
   $("#newsPaste").classList.add("hidden");
   try {
-    const today = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-    const out = await askJSON(`Today is ${today}. Use Google Search to find today's top news stories: a mix of national news, science, technology, sports, weather, entertainment, and quirky or offbeat news.
-Pick 8 that someone could make a good-natured, lighthearted meme about.
+    const items = await gatherHeadlines();
+    let list = [];
+    if (items.length) {
+      lastGrounding = null;
+      const out = await askJSON(`Here are real headlines from the last day or so (from Wikipedia's Current events page and Hacker News), numbered:
+${items.map((x, i) => `${i}. [${x.cat}] ${x.text}`).join("\n")}
+
+Pick up to 8 that someone could make a good-natured, lighthearted meme about, from a variety of categories.
 ${NEWS_SAFE}
-For each story give: "headline" (under 14 words, in your own words), "summary" (one neutral sentence), "angle" (a relatable meme situation inspired by it, under 20 words, no real names), "emoji", and "url" (the article URL if you have it, otherwise "").
-Reply with ONLY JSON, no markdown: {"stories":[{"emoji":"🚀","headline":"...","summary":"...","angle":"...","url":""}]}`, { tools: [{ google_search: {} }] });
-    const list = (out.stories || []).map(cleanStory).filter(Boolean).slice(0, 8);
+For each pick give: "i" (its number above), "emoji", "headline" (under 14 words, your own words), "summary" (one neutral sentence using ONLY facts in that item; add nothing), and "angle" (a relatable meme situation inspired by it, under 20 words, no real names).
+Reply with ONLY JSON: {"stories":[{"i":0,"emoji":"🚀","headline":"...","summary":"...","angle":"..."}]}`);
+      list = (out.stories || []).filter(x => items[+x.i]).map(x => cleanStory({ ...x, url: items[+x.i].url })).filter(Boolean).slice(0, 8);
+    } else {
+      // Couldn't reach the free feeds: try Gemini's Search tool (works only on paid keys).
+      const out = await askJSON(`Today is ${new Date().toDateString()}. Use Google Search to find today's top news stories. Pick 8 good for lighthearted memes.
+${NEWS_SAFE}
+Reply with ONLY JSON: {"stories":[{"emoji":"🚀","headline":"...","summary":"...","angle":"...","url":""}]}`, { tools: [{ google_search: {} }] });
+      list = (out.stories || []).map(cleanStory).filter(Boolean).slice(0, 8);
+    }
     if (!list.length) throw { message: "No meme-friendly stories came back. Try again in a bit." };
     renderStories(list);
-  } catch (e) { if (!e || !["badkey", "nokey"].includes(e.code)) toast(e && e.message ? `News: ${e.message}` : "Couldn't fetch the news.", "err"); }
+  } catch (e) {
+    if (e && e.code === "toolquota") toast("Couldn't reach the news feeds. Paste a link or the article text instead.", "err");
+    else if (!e || !["badkey", "nokey"].includes(e.code)) toast(e && e.message ? `News: ${e.message}` : "Couldn't fetch the news.", "err");
+  }
   busy(btn, false);
 };
 async function storyFrom(prompt, tools) {
@@ -1931,7 +2024,7 @@ $("#newsLink").onclick = async () => {
   try {
     const out = await storyFrom(`Read this news article using your URL tool: ${url}`, [{ url_context: {} }]);
     if (!handleStory(out, url)) { $("#newsPaste").classList.remove("hidden"); $("#newsText").focus(); }
-  } catch (e) { if (!e || !["badkey", "nokey"].includes(e.code)) { $("#newsPaste").classList.remove("hidden"); toast(e && e.message ? `Link: ${e.message}` : "Couldn't read that link.", "err"); } }
+  } catch (e) { if (!e || !["badkey", "nokey"].includes(e.code)) { $("#newsPaste").classList.remove("hidden"); $("#newsText").focus(); toast(e && e.code === "toolquota" ? "Gemini can't open links on this key right now. Paste the article text below." : e && e.message ? `Link: ${e.message}` : "Couldn't read that link.", "err"); } }
   busy(btn, false);
 };
 $("#newsTextGo").onclick = async () => {
@@ -2371,12 +2464,50 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
 const syncOnline = () => $("#offlineBar").classList.toggle("hidden", navigator.onLine);
 window.addEventListener("online", syncOnline); window.addEventListener("offline", syncOnline); syncOnline();
 
+/* ================= Two-screen (Duo) layout ================= */
+function screenSegments() {
+  try {
+    const v = window.viewport && window.viewport.segments; // Viewport Segments API (Chromium on foldables / dual-screen)
+    if (v && v.length === 2) return v;
+    if (typeof window.getWindowSegments === "function") { const w = window.getWindowSegments(); if (w && w.length === 2) return w; } // older Surface Duo Edge API
+  } catch (e) {}
+  return null;
+}
+function applyLayout() {
+  const root = document.documentElement, W = window.innerWidth, H = window.innerHeight;
+  const seg = screenSegments();
+  let dual = false, pa = 0, hinge = 0;
+  if (seg && Math.abs(seg[0].top - seg[1].top) < 4 && seg[1].left > seg[0].left) { // side-by-side screens
+    dual = true; pa = seg[0].width; hinge = Math.max(0, seg[1].left - (seg[0].left + seg[0].width));
+  } else if (W >= 980 && W > H * 1.2) { // spanned without the API, tablets in landscape, laptops
+    dual = true; hinge = 0; pa = Math.round(Math.min(Math.max(W * .46, 420), 640));
+  }
+  root.classList.toggle("dual", dual);
+  root.style.setProperty("--pa", pa + "px"); root.style.setProperty("--hinge", hinge + "px");
+  const out = $("#outPane"), right = $("#dualRight"), home = $("#view-generate");
+  if (dual && out.parentElement !== right) right.appendChild(out);
+  if (!dual && out.parentElement !== home) home.appendChild(out);
+  if (dual) root.style.setProperty("--hdr", document.querySelector("header.top").offsetHeight + "px");
+  tabFade();
+}
+function tabFade() {
+  const t = $("#tabs"); const max = t.scrollWidth - t.clientWidth;
+  t.classList.toggle("more-r", max > 4 && t.scrollLeft < max - 4);
+  t.classList.toggle("more-l", t.scrollLeft > 4);
+}
+$("#tabs").addEventListener("scroll", tabFade, { passive: true });
+let layoutT; window.addEventListener("resize", () => { clearTimeout(layoutT); layoutT = setTimeout(applyLayout, 80); });
+try { window.viewport && window.viewport.addEventListener && window.viewport.addEventListener("segmentschange", applyLayout); } catch (e) {}
+try { matchMedia("(horizontal-viewport-segments: 2)").addEventListener("change", applyLayout); } catch (e) {}
+applyLayout();
+document.fonts && document.fonts.ready.then(applyLayout);
+
 /* ================= Tabs & boot ================= */
 const TABS = ["generate", "templates", "photo", "panels", "scene", "vault"];
 function showTab(t, push = true) {
   if (!TABS.includes(t)) t = "generate";
   TABS.forEach(x => $("#view-" + x).classList.toggle("hidden", x !== t));
-  $$(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
+  $$(".tab").forEach(b => { b.classList.toggle("active", b.dataset.tab === t); if (b.dataset.tab === t && b.scrollIntoView) b.scrollIntoView({ block: "nearest", inline: "nearest" }); });
   if (t === "vault") renderVault();
   if (push) { try { history.replaceState(null, "", "#" + t); } catch (e) {} }
 }
